@@ -3,13 +3,14 @@
 Site static pentru interpretarea testelor de pompare și generarea raportului tehnic în PDF.
 
 **Ce face**
-- calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K = T/b prin patru metode: Cooper-Jacob, Theis (ajustare automată prin cele mai mici pătrate), revenire (Theis-Jacob) și Thiem;
+- citirile se trec direct în site, într-un tabel cu câmpuri (timp + nivel), pentru **1, 2 sau 3 puncte de măsură** (piezometre sau puțul pompat), separat pentru pompare și revenire; se poate lipi și din Excel;
+- calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K = T/b pentru fiecare punct prin Cooper-Jacob (cu alegerea automată a intervalului din condiția u < 0,05), Theis (ajustare automată prin cele mai mici pătrate) și revenire (Theis-Jacob); cu două sau trei piezometre adaugă metoda distanță–denivelare (Thiem, respectiv Dupuit-Thiem la nivel liber);
 - aplică opțional corecția Jacob pentru acvifer cu nivel liber;
 - verifică automat condiția u < 0,05, consistența între metode și forma dreptei de revenire;
 - generează raportul PDF (A4) cu datele lucrării, explicarea metodelor, formulele generale și formulele aplicate cu valori, graficele și anexele cu citirile;
 - include procedura de execuție a testului în teren.
 
-Datele se introduc prin copiere din Excel (două coloane: timp în minute și nivel sau denivelare). Totul rulează în browser; nimic nu este trimis pe un server, iar ultima sesiune rămâne salvată local.
+Totul rulează în browser; nimic nu este trimis pe un server, iar ultima sesiune rămâne salvată local.
 
 ## Publicare pe GitHub Pages
 

@@ -1,11 +1,12 @@
-/* Grafice: aceeași geometrie, două ieșiri — SVG pentru site, canvas (PNG) pentru raport */
+/* Grafice: aceeași geometrie, două ieșiri — SVG pentru site, canvas (PNG) pentru raport.
+   Fiecare punct de măsură are culoarea lui; dreptele ajustate au aceeași culoare. */
 (function (global) {
   "use strict";
   const { fs, supNum, theisS, inRange } = global.PT;
 
   const PAL = {
     grid: "#d6e4ec", gridMinor: "#e8f0f4", axis: "#6d8594", text: "#5d7483", label: "#10303f",
-    pt: "#d08c2c", fit: "#1479a3", fit2: "#0b4f6c", mk: "#2a9d8f",
+    pt: "#d08c2c", fit: "#1479a3", mk: "#0b4f6c",
     font: "Barlow, 'Segoe UI', Arial, sans-serif"
   };
 
@@ -23,6 +24,11 @@
   function logBounds(a) {
     const lo = Math.min(...a), hi = Math.max(...a);
     return [Math.pow(10, Math.floor(Math.log10(lo))), Math.pow(10, Math.ceil(Math.log10(hi) - 1e-12))];
+  }
+  function darker(hex, f) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const c = x => Math.max(0, Math.round(x * f)).toString(16).padStart(2, "0");
+    return "#" + c(r) + c(g) + c(b);
   }
 
   /* ---------- geometrie comună ---------- */
@@ -50,10 +56,11 @@
     be.line(m.l, m.t + ph, m.l + pw, m.t + ph, A); be.line(m.l, m.t, m.l, m.t + ph, A);
     be.clip(m.l, m.t, pw, ph);
     (o.series || []).forEach(s => {
+      const col = s.color || (s.type === "pts" ? pal.pt : pal.fit);
       if (s.type === "line" && s.data.length > 1)
-        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), s.cls === "fit2" ? { stroke: pal.fit2, width: 2, dash: [6, 4] } : { stroke: pal.fit, width: 2.2 });
-      if (s.type === "pts") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 3.6, p[2] ? { fill: pal.pt, stroke: pal.pt, width: 1.4 } : { fill: "none", stroke: pal.pt, width: 1.4 }));
-      if (s.type === "mk") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 5, { fill: pal.mk, stroke: "#ffffff", width: 1.5 }));
+        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), { stroke: s.type === "line" && s.color ? darker(col, 0.82) : col, width: s.dash ? 1.8 : 2.1, dash: s.dash ? [6, 4] : null });
+      if (s.type === "pts") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 3.6, p[2] ? { fill: col, stroke: col, width: 1.4 } : { fill: "none", stroke: col, width: 1.4 }));
+      if (s.type === "mk") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 4.6, { fill: col, stroke: "#ffffff", width: 1.5 }));
     });
     be.unclip();
     const L = { size: 12.5, weight: 600, color: pal.label, family: pal.font, anchor: "middle" };
@@ -64,7 +71,7 @@
 
   /* ---------- ieșire SVG ---------- */
   function svgBackend() {
-    const P = []; let W, H, cid = "c" + Math.random().toString(36).slice(2, 8);
+    const P = []; let W, H; const cid = "c" + Math.random().toString(36).slice(2, 8);
     const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
     const st = s => `stroke="${s.stroke}" stroke-width="${s.width}"${s.dash ? ` stroke-dasharray="${s.dash.join(" ")}"` : ""}`;
     return {
@@ -102,42 +109,63 @@
     };
   }
 
-  /* ---------- specificațiile graficelor din rezultate ---------- */
+  /* ---------- specificațiile graficelor ---------- */
+  const withPos = res => res.points.filter(p => p.pump.some(q => q.s > 0));
   function specCJ(res) {
-    const P = res.pump.filter(p => p.s > 0); if (P.length < 2) return null;
-    const [x0, x1] = logBounds(P.map(p => p.t)), y1 = niceMax(Math.max(...P.map(p => p.s)));
-    const ser = [{ type: "pts", data: P.map(p => [p.t, p.s, inRange(p.t, res.R.a1, res.R.a2)]) }];
-    if (res.cj) {
-      const c = res.cj;
-      ser.unshift({ type: "line", data: [[x0, c.a + c.ds * Math.log10(x0)], [x1, c.a + c.ds * Math.log10(x1)]] });
-      if (c.t0 >= x0 && c.t0 <= x1) ser.push({ type: "mk", data: [[c.t0, 0]] });
-    }
+    const pts = withPos(res); if (!pts.length) return null;
+    const all = pts.flatMap(p => p.pump.filter(q => q.s > 0));
+    if (all.length < 2) return null;
+    const [x0, x1] = logBounds(all.map(q => q.t)), y1 = niceMax(Math.max(...all.map(q => q.s)));
+    const ser = [];
+    pts.forEach(p => {
+      const c = p.cj;
+      if (c) ser.push({ type: "line", color: p.color, data: [[x0, c.a + c.ds * Math.log10(x0)], [x1, c.a + c.ds * Math.log10(x1)]] });
+      ser.push({ type: "pts", color: p.color, data: p.pump.filter(q => q.s > 0).map(q => [q.t, q.s, c ? q.t >= c.t1 - 1e-9 && q.t <= c.t2 + 1e-9 : false]) });
+    });
     return { xLog: true, x0, x1, y0: 0, y1, series: ser, xl: "timp de la pornire t (min)", yl: res.inp.corr ? "denivelare corectată s′ (m)" : "denivelare s (m)" };
   }
   function specTH(res) {
-    const P = res.pump.filter(p => p.s > 0); if (P.length < 2) return null;
-    const [x0, x1] = logBounds(P.map(p => p.t)), [y0, y1] = logBounds(P.map(p => p.s));
-    const ser = [{ type: "pts", data: P.map(p => [p.t, p.s, inRange(p.t, res.R.b1, res.R.b2)]) }];
-    if (res.th) {
-      const { Q, r } = res.inp, cv = [];
-      for (let i = 0; i <= 90; i++) { const t = x0 * Math.pow(x1 / x0, i / 90), s = theisS(Q, res.th.T, res.th.S, r, t / 1440); if (s > 0) cv.push([t, Math.max(s, y0 * 0.3)]); }
-      ser.unshift({ type: "line", cls: "fit2", data: cv });
-    }
+    const pts = withPos(res); if (!pts.length) return null;
+    const all = pts.flatMap(p => p.pump.filter(q => q.s > 0));
+    if (all.length < 2) return null;
+    const [x0, x1] = logBounds(all.map(q => q.t)), [y0, y1] = logBounds(all.map(q => q.s));
+    const ser = [];
+    pts.forEach(p => {
+      if (p.th) {
+        const cv = [];
+        for (let i = 0; i <= 90; i++) { const t = x0 * Math.pow(x1 / x0, i / 90), s = theisS(res.inp.Q, p.th.T, p.th.S, p.r, t / 1440); if (s > 0) cv.push([t, Math.max(s, y0 * 0.3)]); }
+        ser.push({ type: "line", color: p.color, dash: true, data: cv });
+      }
+      ser.push({ type: "pts", color: p.color, data: p.pump.filter(q => q.s > 0).map(q => [q.t, q.s, inRange(q.t, res.R.b1, res.R.b2)]) });
+    });
     return { xLog: true, yLog: true, x0, x1, y0, y1, series: ser, xl: "timp de la pornire t (min)", yl: "denivelare s (m)" };
   }
   function specRE(res) {
-    const A = res.rec; if (A.length < 2) return null;
-    const [, x1] = logBounds(A.map(p => p.x).concat([10]));
-    const vals = A.map(p => p.s).concat([0]);
-    const lo = Math.min(0, ...vals), y1 = niceMax(Math.max(...vals));
-    const y0 = lo < 0 ? -niceMax(-lo) : 0;
-    const ser = [{ type: "pts", data: A.map(p => [p.x, p.s, p.on]) }];
-    if (res.re) ser.unshift({ type: "line", data: [[1, res.re.a], [x1, res.re.a + res.re.ds * Math.log10(x1)]] });
+    const pts = res.points.filter(p => p.rec.length >= 2); if (!pts.length) return null;
+    const all = pts.flatMap(p => p.rec);
+    const [, x1] = logBounds(all.map(q => q.x).concat([10]));
+    const vals = all.map(q => q.s).concat([0]);
+    const lo = Math.min(0, ...vals), y1 = niceMax(Math.max(...vals)), y0 = lo < 0 ? -niceMax(-lo) : 0;
+    const ser = [];
+    pts.forEach(p => {
+      if (p.re) ser.push({ type: "line", color: p.color, data: [[1, p.re.a], [x1, p.re.a + p.re.ds * Math.log10(x1)]] });
+      ser.push({ type: "pts", color: p.color, data: p.rec.map(q => [q.x, q.s, q.on]) });
+    });
     return { xLog: true, x0: 1, x1, y0, y1, series: ser, xl: "t/t′   (t = tp + t′)", yl: "denivelare reziduală s′ (m)" };
+  }
+  function specDist(res) {
+    const d = res.dist; if (!d) return null;
+    const rs = d.vals.map(v => v.r).concat([d.r0]);
+    const x0 = Math.pow(10, Math.floor(Math.log10(Math.min(...rs)))), x1 = Math.pow(10, Math.ceil(Math.log10(Math.max(...rs)) - 1e-12));
+    const y1 = niceMax(Math.max(...d.vals.map(v => v.s), d.a - d.dsR * Math.log10(x0)) );
+    const ser = [{ type: "line", data: [[x0, d.a - d.dsR * Math.log10(x0)], [x1, d.a - d.dsR * Math.log10(x1)]] }];
+    d.vals.forEach(v => ser.push({ type: "pts", color: v.color, data: [[v.r, v.s, true]] }));
+    ser.push({ type: "mk", data: [[d.r0, 0]] });
+    return { xLog: true, x0, x1, y0: 0, y1, series: ser, xl: "distanța de la puț r (m)", yl: `denivelare s (m) la t = ${fs(d.tstar)} min` };
   }
 
   function toSVG(o, w, h, pal) { return draw(svgBackend(), o, w, h, pal); }
   function toPNG(o, w, h, scale, pal) { return draw(canvasBackend(scale || 3), o, w, h, pal); }
 
-  global.PTChart = { specCJ, specTH, specRE, toSVG, toPNG, PAL };
+  global.PTChart = { specCJ, specTH, specRE, specDist, toSVG, toPNG, PAL };
 })(window);

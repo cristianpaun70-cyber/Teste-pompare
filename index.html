@@ -18,7 +18,7 @@
       Teste de pompare
     </div>
     <h1>Interpretarea testelor de pompare</h1>
-    <p>Calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K a stratului pompat prin patru metode și generează raportul tehnic în PDF, cu formulele aplicate și graficele.</p>
+    <p>Trece citirile din teren pentru unul, două sau trei puncte de măsură. Site-ul calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K prin mai multe metode și generează raportul tehnic în PDF, cu formulele aplicate și graficele.</p>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tb-calc" aria-selected="true" aria-controls="tab-calc">Calcul</button>
       <button class="tab" role="tab" id="tb-rep" aria-selected="false" aria-controls="tab-rep">Raport PDF</button>
@@ -40,7 +40,7 @@
     <div class="meta-grid">
       <div class="field wide"><label for="lucrare">Lucrare</label><input id="lucrare" type="text" placeholder="ex. Ansamblu rezidențial — incintă excavată"></div>
       <div class="field wide"><label for="amplasament">Amplasament</label><input id="amplasament" type="text" placeholder="ex. Str. Exemplu nr. 10, București"></div>
-      <div class="field"><label for="punct">Puț / punct de măsură</label><input id="punct" type="text" placeholder="ex. PP1 / PZ2"></div>
+      <div class="field"><label for="punct">Puț de pompare</label><input id="punct" type="text" placeholder="ex. PP1"></div>
       <div class="field"><label for="data">Data testului</label><input id="data" type="date"></div>
       <div class="field wide"><label for="firma">Test executat de (firma)</label><input id="firma" type="text" placeholder="ex. Firma de foraje SRL"></div>
     </div>
@@ -62,100 +62,111 @@
           <div class="field"><label for="aq">Tip acvifer</label><select id="aq"><option value="c">Sub presiune</option><option value="u">Cu nivel liber</option></select></div>
         </div>
         <label class="check" id="corrWrap"><input type="checkbox" id="corr" checked> <span>Corecție Jacob pentru nivel liber: s′ = s − s²/2b</span></label>
-        <div class="row">
-          <div class="field"><label for="r">Distanța r până la punctul de măsură (m)</label><input id="r" type="text" inputmode="decimal"></div>
-          <div class="field" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="pw"> <span>Măsurat chiar în puțul de pompare</span></label></div>
-        </div>
+        <div class="field"><label for="mode">În tabel trec</label><select id="mode"><option value="h">Adâncimea nivelului față de reper (m)</option><option value="s">Direct denivelarea s (m)</option></select></div>
       </fieldset>
 
       <fieldset>
-        <legend>Pompare cu debit constant</legend>
-        <div class="row">
-          <div class="field"><label for="mode">Coloana 2 conține</label><select id="mode"><option value="h">Adâncimea nivelului (m)</option><option value="s">Denivelarea s (m)</option></select></div>
-          <div class="field" id="nsWrap"><label for="ns">Nivel static (m sub reper)</label><input id="ns" type="text" inputmode="decimal"></div>
-        </div>
+        <legend>Puncte de măsură</legend>
         <div class="field">
-          <label for="pdata">Timp de la pornire (min) · nivel</label>
-          <textarea id="pdata" rows="9" spellcheck="false"></textarea>
-          <span class="help">Lipește direct din Excel două coloane. Separatorul poate fi tab, punct și virgulă sau spațiu; virgula zecimală e acceptată.</span>
+          <span class="lbl">Număr de puncte în care ai măsurat</span>
+          <div class="seg" role="radiogroup" aria-label="Număr de puncte de măsură">
+            <button type="button" class="seg-b" data-n="1" role="radio">1 punct</button>
+            <button type="button" class="seg-b" data-n="2" role="radio">2 puncte</button>
+            <button type="button" class="seg-b" data-n="3" role="radio">3 puncte</button>
+          </div>
         </div>
-        <div class="mini">Interval folosit (min) — gol = toate punctele</div>
-        <div class="row">
-          <div class="field"><label for="cj1">Cooper-Jacob de la</label><input id="cj1" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="cj2">până la</label><input id="cj2" type="text" inputmode="decimal"></div>
-        </div>
-        <div class="row">
-          <div class="field"><label for="th1">Theis de la</label><input id="th1" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="th2">până la</label><input id="th2" type="text" inputmode="decimal"></div>
-        </div>
+        <div id="ptsBox" class="pts"></div>
+        <span class="help">Distanța r se măsoară de la axul puțului de pompare. Dacă un punct este chiar puțul pompat, bifează căsuța: pentru el se calculează doar T.</span>
       </fieldset>
 
       <fieldset>
-        <legend>Revenire după oprire</legend>
-        <div class="field"><label for="tp">Durata pompării tp (min)</label><input id="tp" type="text" inputmode="decimal" placeholder="gol = ultimul timp din pompare"></div>
-        <div class="field">
-          <label for="rdata">Timp de la oprire t′ (min) · nivel</label>
-          <textarea id="rdata" rows="6" spellcheck="false"></textarea>
-          <span class="help">Coloana 2 se interpretează la fel ca la pompare.</span>
-        </div>
+        <legend>Setări de interpretare</legend>
+        <div class="mini">Cooper-Jacob — interval (min)</div>
         <div class="row">
-          <div class="field"><label for="rr1">t/t′ de la</label><input id="rr1" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="rr2">până la</label><input id="rr2" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="cj1">de la</label><input id="cj1" type="text" inputmode="decimal" placeholder="automat"></div>
+          <div class="field"><label for="cj2">până la</label><input id="cj2" type="text" inputmode="decimal" placeholder="final"></div>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Thiem — regim stabilizat</legend>
+        <div class="mini">Theis — interval (min)</div>
         <div class="row">
-          <div class="field"><label for="r1">r₁ (m)</label><input id="r1" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="s1">s₁ (m)</label><input id="s1" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="r2">r₂ (m)</label><input id="r2" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="s2">s₂ (m)</label><input id="s2" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="th1">de la</label><input id="th1" type="text" inputmode="decimal" placeholder="toate"></div>
+          <div class="field"><label for="th2">până la</label><input id="th2" type="text" inputmode="decimal" placeholder="toate"></div>
         </div>
-        <span class="help">Denivelări stabilizate în două piezometre, r₁ &lt; r₂. Lasă gol dacă nu ai două piezometre.</span>
+        <div class="mini">Revenire</div>
+        <div class="row">
+          <div class="field"><label for="tp">Durata pompării tp (min)</label><input id="tp" type="text" inputmode="decimal" placeholder="ultimul timp"></div>
+          <div class="field"><label for="rr2">folosește t/t′ până la</label><input id="rr2" type="text" inputmode="decimal" placeholder="automat"></div>
+        </div>
+        <input id="rr1" type="hidden">
+        <div id="tstarWrap">
+          <div class="mini">Distanță–denivelare / Thiem</div>
+          <div class="field"><label for="tstar">Momentul comparației (min)</label><input id="tstar" type="text" inputmode="decimal" placeholder="ultimul timp comun"></div>
+        </div>
+        <span class="help">Câmpurile goale folosesc alegerea automată: pentru fiecare piezometru, dreapta Cooper-Jacob și cea de revenire folosesc doar citirile pentru care u = r²S/(4Tt) &lt; 0,05.</span>
       </fieldset>
 
       <div class="btns">
         <button class="btn ghost" id="btnEx" type="button">Încarcă exemplul</button>
-        <button class="btn ghost" id="btnClr" type="button">Golește datele</button>
+        <button class="btn ghost" id="btnClr" type="button">Golește citirile</button>
       </div>
-      <p class="help" id="exNote">Datele precompletate sunt un exemplu sintetic generat cu T = 450 m²/zi, S = 8·10⁻⁴, b = 15 m, r = 12 m, Q = 50 m³/h. Înlocuiește-le cu măsurătorile tale.</p>
+      <p class="help" id="exNote">Datele precompletate sunt un exemplu sintetic (3 piezometre la 12, 35 și 80 m), generat cu T = 450 m²/zi, S = 8·10⁻⁴, b = 15 m, Q = 50 m³/h. Înlocuiește-le cu măsurătorile tale.</p>
     </aside>
 
-    <div class="outputs">
-      <div class="card">
-        <div class="card-h">
-          <h2>Rezultate</h2>
-          <button class="btn big" id="btnPdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Generează raportul PDF</button>
+    <div class="card readings">
+      <div class="card-h">
+        <div><div class="eyebrow">Fișa de citiri</div><h2>Măsurătorile</h2></div>
+        <div class="seg small" role="tablist" aria-label="Etapa">
+          <button type="button" class="seg-b" id="gtPump" data-g="pump" role="tab">Pompare</button>
+          <button type="button" class="seg-b" id="gtRec" data-g="rec" role="tab">Revenire</button>
         </div>
-        <div class="verdict" id="verdict"></div>
-        <div class="tbl"><table>
-          <thead><tr><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Detalii</th></tr></thead>
-          <tbody id="res"></tbody>
-        </table></div>
-        <ul class="notes" id="notes"></ul>
       </div>
+      <p class="help" id="gridHelp"></p>
+      <div class="grid-wrap"><table class="grid" id="grid"><thead id="gridHead"></thead><tbody id="gridBody"></tbody></table></div>
+      <div class="btns">
+        <button class="btn ghost sm" id="gAdd" type="button">+ 10 rânduri</button>
+        <button class="btn ghost sm" id="gStd" type="button">Completează timpii standard</button>
+        <button class="btn ghost sm" id="gClear" type="button">Golește tabelul</button>
+      </div>
+      <p class="help">Treci în fiecare rând timpul și nivelul citit în fiecare punct. Enter trece la rândul următor. Poți lipi și direct din Excel (coloanele: timp, apoi punctele în ordine). Rândurile goale sunt ignorate.</p>
+    </div>
+  </div>
 
-      <div class="charts">
-        <div class="card chart wide">
-          <h3>Cooper-Jacob · s – log t</h3>
-          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="h"></i>puncte excluse</span><span><i class="l"></i>dreapta ajustată</span><span><i class="t"></i>t₀</span></div>
-          <div id="chCJ"></div>
-          <p class="cap" id="capCJ"></p>
-        </div>
-        <div class="card chart">
-          <h3>Theis · log s – log t</h3>
-          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="d"></i>curba Theis</span></div>
-          <div id="chTH"></div>
-          <p class="cap" id="capTH"></p>
-        </div>
-        <div class="card chart">
-          <h3>Revenire · s′ – log(t/t′)</h3>
-          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="l"></i>dreapta ajustată</span></div>
-          <div id="chRE"></div>
-          <p class="cap" id="capRE"></p>
-        </div>
-      </div>
+  <div class="card results">
+    <div class="card-h">
+      <h2>Rezultate</h2>
+      <button class="btn big" id="btnPdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Generează raportul PDF</button>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Punct</th><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Detalii</th></tr></thead>
+      <tbody id="res"></tbody>
+    </table></div>
+    <ul class="notes" id="notes"></ul>
+  </div>
+
+  <div class="charts">
+    <div class="card chart wide">
+      <h3>Cooper-Jacob · s – lg t</h3>
+      <div class="legend" id="legCJ"></div>
+      <div id="chCJ"></div>
+      <p class="cap" id="capCJ"></p>
+    </div>
+    <div class="card chart">
+      <h3>Theis · lg s – lg t</h3>
+      <div class="legend" id="legTH"></div>
+      <div id="chTH"></div>
+      <p class="cap" id="capTH"></p>
+    </div>
+    <div class="card chart">
+      <h3>Revenire · s′ – lg(t/t′)</h3>
+      <div class="legend" id="legRE"></div>
+      <div id="chRE"></div>
+      <p class="cap" id="capRE"></p>
+    </div>
+    <div class="card chart wide" id="distCard">
+      <h3>Distanță–denivelare (Thiem) · s – lg r</h3>
+      <div class="legend" id="legDI"></div>
+      <div id="chDI"></div>
+      <p class="cap" id="capDI"></p>
     </div>
   </div>
 </section>
