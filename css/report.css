@@ -1,0 +1,120 @@
+/* Raportul A4 — aceleași stiluri pentru previzualizare, PDF și tipărire */
+#reportBuild { position: absolute; left: -12000px; top: 0; width: 210mm; }
+.page {
+  width: 210mm; height: 296.8mm; background: #fff; color: #10252f; position: relative; overflow: hidden;
+  font: 10.5pt/1.5 "Barlow", "Segoe UI", Arial, sans-serif; display: flex; flex-direction: column;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.page i { font-style: italic; }
+.p-head { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 16mm; height: 13mm; border-bottom: 1px solid #d4e2ea; font-size: 8.5pt; color: #587080; position: relative; }
+.p-head::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2.2mm; background: linear-gradient(90deg, #082a3e, #0b4f6c 40%, #1479a3 75%, #4fb0d8); }
+.p-head .pb { font-weight: 600; color: #0b4f6c; text-transform: uppercase; font-size: 8pt; letter-spacing: .06em; padding-top: 1.6mm; }
+.p-head .pr { padding-top: 1.6mm; }
+.p-body { flex: 1; min-height: 0; overflow: hidden; padding: 7mm 16mm 4mm; }
+.page.first .p-head { display: none; }
+.page.first .p-body { padding-top: 0; }
+.p-foot { flex: none; height: 11mm; padding: 0 16mm; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 8pt; color: #6d8594; border-top: 1px solid #e3edf2; }
+.p-foot .pn { font-weight: 600; color: #0b4f6c; white-space: nowrap; }
+
+.blk { margin-bottom: 5.5mm; }
+.blk:last-child { margin-bottom: 0; }
+
+/* copertă */
+.cover { margin: 0 -16mm 6mm; padding: 13mm 16mm 17mm; color: #fff; position: relative;
+  background-color: #0b4f6c;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 60' preserveAspectRatio='none'%3E%3Cpath d='M0 30 C130 8 260 8 400 28 S660 52 800 26 V60 H0Z' fill='%234fb0d8' fill-opacity='.30'/%3E%3Cpath d='M0 42 C150 26 300 32 450 44 S700 56 800 40 V60 H0Z' fill='%23ffffff'/%3E%3C/svg%3E"), linear-gradient(120deg, #082a3e 0%, #0b4f6c 45%, #1479a3 85%, #2a9d8f 130%);
+  background-repeat: no-repeat; background-position: bottom left, 0 0; background-size: 100% 16mm, 100% 100%; }
+.cover .ey { font-size: 8.5pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a9dcef; }
+.cover h1 { font: 700 30pt/1.05 "Barlow Condensed", "Arial Narrow", Arial, sans-serif; margin: 3mm 0 2mm; color: #fff; }
+.cover .sub { font-size: 12pt; color: #d6eef7; max-width: 150mm; }
+.cover .drop { position: absolute; right: 16mm; top: 12mm; width: 17mm; height: 17mm; }
+
+.meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; border-top: 2px solid #0b4f6c; }
+.meta div { display: flex; flex-direction: column; padding: 2.2mm 0; border-bottom: 1px solid #d4e2ea; min-width: 0; }
+.meta .w { grid-column: 1 / -1; }
+.meta .k { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .07em; color: #587080; font-weight: 600; }
+.meta .v { font-size: 11pt; font-weight: 500; color: #10252f; overflow-wrap: anywhere; }
+
+/* titluri de secțiune */
+.h2 { display: flex; align-items: baseline; gap: 3mm; border-bottom: 1.5px solid #1479a3; padding-bottom: 1.2mm; margin-bottom: 3mm; }
+.h2 .no { font: 700 15pt "Barlow Condensed", Arial, sans-serif; color: #fff; background: linear-gradient(135deg, #0b4f6c, #1479a3); border-radius: 2mm; min-width: 8mm; height: 8mm; display: inline-flex; align-items: center; justify-content: center; padding: 0 2mm; align-self: center; }
+.h2 .tt { font: 600 16pt "Barlow Condensed", Arial, sans-serif; color: #0b4f6c; }
+.h3 { font: 600 11.5pt "Barlow Condensed", Arial, sans-serif; color: #1479a3; margin: 3mm 0 1.5mm; text-transform: uppercase; letter-spacing: .04em; }
+.page p { margin: 0 0 2mm; text-align: justify; hyphens: auto; }
+.page p:last-child { margin-bottom: 0; }
+
+/* tabele */
+.page table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+.page th { text-align: left; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .05em; color: #fff; background: #0b4f6c; padding: 1.6mm 2mm; font-weight: 600; }
+.page td { padding: 1.4mm 2mm; border-bottom: 1px solid #dfe9ee; vertical-align: top; }
+.page tr:nth-child(even) td { background: #f5f9fb; }
+.page td.n, .page th.n { font-family: "JetBrains Mono", Consolas, monospace; font-size: 8.8pt; text-align: right; white-space: nowrap; }
+.page th.n { font-family: inherit; font-size: 7.5pt; }
+.page td.m { font-weight: 600; color: #0b4f6c; }
+.page tr.mean td { background: #e4f2f8 !important; font-weight: 600; border-top: 1.5px solid #1479a3; }
+.kv { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; }
+.kv div { display: flex; justify-content: space-between; gap: 4mm; padding: 1.3mm 0; border-bottom: 1px dotted #c4d6df; font-size: 9.8pt; }
+.kv .k { color: #587080; }
+.kv .v { font-weight: 600; text-align: right; }
+.data2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+.data2 table { font-size: 8.6pt; }
+.data2 td { padding: 0.75mm 1.8mm; }
+
+/* casete rezultat */
+.tiles { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 3mm; margin-bottom: 4mm; }
+.tile { border-radius: 2.5mm; padding: 3mm 3.5mm; background: #e4f2f8; display: flex; flex-direction: column; gap: .5mm; }
+.tile.main { background: linear-gradient(135deg, #0b4f6c, #1479a3); color: #fff; }
+.tile .k { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .06em; color: #587080; font-weight: 600; }
+.tile.main .k { color: #bfe3f2; }
+.tile .v { font: 700 19pt/1.1 "Barlow Condensed", Arial, sans-serif; color: #0b4f6c; white-space: nowrap; }
+.tile.main .v { color: #fff; font-size: 23pt; }
+.tile .u { font-size: 8.5pt; color: #587080; }
+.tile.main .u { color: #d6eef7; }
+.tile.s { background: #f6ead6; } .tile.s .v { color: #8a5a14; }
+.tile.t { background: #dff2ef; } .tile.t .v { color: #1d7368; }
+
+/* observații */
+.rnotes { display: flex; flex-direction: column; gap: 1.6mm; }
+.rnotes div { font-size: 9.4pt; padding: 1.6mm 3mm; border-left: 1mm solid #b9cdd8; background: #f5f9fb; }
+.rnotes .ok { border-left-color: #2a9d8f; } .rnotes .warn { border-left-color: #c98a0c; } .rnotes .bad { border-left-color: #cf5444; } .rnotes .info { border-left-color: #4fb0d8; }
+.hyp { margin: 0; padding-left: 5mm; font-size: 9.6pt; }
+.hyp li { margin-bottom: .8mm; }
+
+/* formule */
+.eqs { display: flex; flex-direction: column; gap: 2.2mm; background: #f2f8fb; border: 1px solid #d4e5ee; border-radius: 2.5mm; padding: 3.5mm 5mm; }
+.eq { display: flex; align-items: center; flex-wrap: wrap; gap: 1.6mm; font: 12pt/1.3 "Barlow", Arial, sans-serif; color: #082a3e; }
+.eq .tag { margin-left: auto; font-size: 8.5pt; color: #587080; font-style: normal; }
+.fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .8mm; }
+.fr > .fn { padding: 0 1.2mm .6mm; border-bottom: 1px solid #082a3e; line-height: 1.15; }
+.fr > .fd { padding: .6mm 1.2mm 0; line-height: 1.15; }
+.op { color: #1479a3; }
+.res { font-weight: 700; color: #0b4f6c; background: #fff; border: 1px solid #a9d3e6; border-radius: 1.5mm; padding: .4mm 2mm; }
+.calc { display: flex; flex-direction: column; border-top: 1px solid #d4e2ea; }
+.cl { display: grid; grid-template-columns: 38mm minmax(0, 1fr); gap: 4mm; align-items: center; padding: 2.2mm 0; border-bottom: 1px solid #d4e2ea; }
+.cl .l { font-size: 9pt; color: #587080; font-weight: 600; }
+.cl .f { display: flex; align-items: center; flex-wrap: wrap; gap: 1.4mm; font-size: 11pt; color: #082a3e; }
+.cl .ok { color: #1d7368; font-weight: 600; font-size: 9.5pt; }
+.cl .warn { color: #a06a05; font-weight: 600; font-size: 9.5pt; }
+
+/* grafice */
+.fig { border: 1px solid #d4e2ea; border-radius: 2.5mm; padding: 2mm 3mm 2.5mm; }
+.fig img { display: block; width: 100%; height: auto; }
+.fig .fc { font-size: 8.6pt; color: #587080; margin-top: 1mm; }
+.fig .fl { display: flex; gap: 5mm; flex-wrap: wrap; font-size: 8pt; color: #587080; margin-bottom: 1mm; }
+.fig .fl i { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; margin-right: 1.2mm; vertical-align: -.3mm; font-style: normal; }
+.fig .fl i.f { background: #d08c2c; } .fig .fl i.h { border: 1.3px solid #d08c2c; width: 2.2mm; height: 2.2mm; }
+.fig .fl i.l { width: 5mm; height: .7mm; border-radius: 0; background: #1479a3; vertical-align: .6mm; }
+.fig .fl i.d { width: 5mm; height: 0; border-radius: 0; border-top: .7mm dashed #0b4f6c; vertical-align: .6mm; }
+.fig .fl i.t { background: #2a9d8f; }
+
+.sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 8mm; font-size: 9pt; color: #587080; }
+.sign div { border-top: 1px solid #9fb5c1; padding-top: 1.5mm; }
+
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff !important; }
+  body > *:not(#reportBuild) { display: none !important; }
+  #reportBuild { position: static; left: auto; width: auto; }
+  .page { break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+}

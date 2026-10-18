@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teste de pompare</title>
+<meta name="description" content="Interpretarea testelor de pompare (Cooper-Jacob, Theis, revenire, Thiem) și raport PDF cu formulele aplicate.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3C11 10 7 15 7 20a9 9 0 0 0 18 0c0-5-4-10-9-17z' fill='%231479a3'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/report.css">
+</head>
+<body>
+<header class="hero">
+  <div class="wrap hero-in">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C11 10 7 15 7 20a9 9 0 0 0 18 0c0-5-4-10-9-17z" fill="#4fb0d8"/><path d="M11.5 21a4.5 4.5 0 0 0 4.5 4.5" stroke="#e4f2f8" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      Teste de pompare
+    </div>
+    <h1>Interpretarea testelor de pompare</h1>
+    <p>Calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K a stratului pompat prin patru metode și generează raportul tehnic în PDF, cu formulele aplicate și graficele.</p>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tb-calc" aria-selected="true" aria-controls="tab-calc">Calcul</button>
+      <button class="tab" role="tab" id="tb-rep" aria-selected="false" aria-controls="tab-rep">Raport PDF</button>
+      <button class="tab" role="tab" id="tb-proc" aria-selected="false" aria-controls="tab-proc">Procedură de teren</button>
+    </nav>
+  </div>
+  <svg class="waves" viewBox="0 0 1440 70" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 34 C180 6 360 6 540 30 S900 60 1080 34 1320 10 1440 26 V70 H0Z" fill="#4fb0d8" opacity=".22"/>
+    <path d="M0 44 C200 22 380 30 560 46 S920 64 1100 44 1340 28 1440 40 V70 H0Z" fill="#e4f2f8" opacity=".35"/>
+    <path d="M0 54 C220 40 420 46 620 56 S980 68 1180 54 1380 46 1440 52 V70 H0Z" fill="#f1f6f9"/>
+  </svg>
+</header>
+
+<main class="wrap">
+<!-- ===================== CALCUL ===================== -->
+<section id="tab-calc" role="tabpanel" aria-labelledby="tb-calc">
+  <div class="card">
+    <div class="card-h"><div><div class="eyebrow">Apare în antetul raportului</div><h2>Identificarea lucrării</h2></div></div>
+    <div class="meta-grid">
+      <div class="field wide"><label for="lucrare">Lucrare</label><input id="lucrare" type="text" placeholder="ex. Ansamblu rezidențial — incintă excavată"></div>
+      <div class="field wide"><label for="amplasament">Amplasament</label><input id="amplasament" type="text" placeholder="ex. Str. Exemplu nr. 10, București"></div>
+      <div class="field"><label for="punct">Puț / punct de măsură</label><input id="punct" type="text" placeholder="ex. PP1 / PZ2"></div>
+      <div class="field"><label for="data">Data testului</label><input id="data" type="date"></div>
+      <div class="field wide"><label for="firma">Test executat de (firma)</label><input id="firma" type="text" placeholder="ex. Firma de foraje SRL"></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="inputs">
+      <fieldset>
+        <legend>Date generale</legend>
+        <div class="field">
+          <label for="q">Debit pompat Q (constant)</label>
+          <div class="unit">
+            <input id="q" type="text" inputmode="decimal">
+            <select id="qu" aria-label="Unitate debit"><option value="ls">l/s</option><option value="mh" selected>m³/h</option><option value="md">m³/zi</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="b">Grosime strat b (m)</label><input id="b" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="aq">Tip acvifer</label><select id="aq"><option value="c">Sub presiune</option><option value="u">Cu nivel liber</option></select></div>
+        </div>
+        <label class="check" id="corrWrap"><input type="checkbox" id="corr" checked> <span>Corecție Jacob pentru nivel liber: s′ = s − s²/2b</span></label>
+        <div class="row">
+          <div class="field"><label for="r">Distanța r până la punctul de măsură (m)</label><input id="r" type="text" inputmode="decimal"></div>
+          <div class="field" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="pw"> <span>Măsurat chiar în puțul de pompare</span></label></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Pompare cu debit constant</legend>
+        <div class="row">
+          <div class="field"><label for="mode">Coloana 2 conține</label><select id="mode"><option value="h">Adâncimea nivelului (m)</option><option value="s">Denivelarea s (m)</option></select></div>
+          <div class="field" id="nsWrap"><label for="ns">Nivel static (m sub reper)</label><input id="ns" type="text" inputmode="decimal"></div>
+        </div>
+        <div class="field">
+          <label for="pdata">Timp de la pornire (min) · nivel</label>
+          <textarea id="pdata" rows="9" spellcheck="false"></textarea>
+          <span class="help">Lipește direct din Excel două coloane. Separatorul poate fi tab, punct și virgulă sau spațiu; virgula zecimală e acceptată.</span>
+        </div>
+        <div class="mini">Interval folosit (min) — gol = toate punctele</div>
+        <div class="row">
+          <div class="field"><label for="cj1">Cooper-Jacob de la</label><input id="cj1" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="cj2">până la</label><input id="cj2" type="text" inputmode="decimal"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="th1">Theis de la</label><input id="th1" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="th2">până la</label><input id="th2" type="text" inputmode="decimal"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Revenire după oprire</legend>
+        <div class="field"><label for="tp">Durata pompării tp (min)</label><input id="tp" type="text" inputmode="decimal" placeholder="gol = ultimul timp din pompare"></div>
+        <div class="field">
+          <label for="rdata">Timp de la oprire t′ (min) · nivel</label>
+          <textarea id="rdata" rows="6" spellcheck="false"></textarea>
+          <span class="help">Coloana 2 se interpretează la fel ca la pompare.</span>
+        </div>
+        <div class="row">
+          <div class="field"><label for="rr1">t/t′ de la</label><input id="rr1" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="rr2">până la</label><input id="rr2" type="text" inputmode="decimal"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Thiem — regim stabilizat</legend>
+        <div class="row">
+          <div class="field"><label for="r1">r₁ (m)</label><input id="r1" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="s1">s₁ (m)</label><input id="s1" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="r2">r₂ (m)</label><input id="r2" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="s2">s₂ (m)</label><input id="s2" type="text" inputmode="decimal"></div>
+        </div>
+        <span class="help">Denivelări stabilizate în două piezometre, r₁ &lt; r₂. Lasă gol dacă nu ai două piezometre.</span>
+      </fieldset>
+
+      <div class="btns">
+        <button class="btn ghost" id="btnEx" type="button">Încarcă exemplul</button>
+        <button class="btn ghost" id="btnClr" type="button">Golește datele</button>
+      </div>
+      <p class="help" id="exNote">Datele precompletate sunt un exemplu sintetic generat cu T = 450 m²/zi, S = 8·10⁻⁴, b = 15 m, r = 12 m, Q = 50 m³/h. Înlocuiește-le cu măsurătorile tale.</p>
+    </aside>
+
+    <div class="outputs">
+      <div class="card">
+        <div class="card-h">
+          <h2>Rezultate</h2>
+          <button class="btn big" id="btnPdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Generează raportul PDF</button>
+        </div>
+        <div class="verdict" id="verdict"></div>
+        <div class="tbl"><table>
+          <thead><tr><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Detalii</th></tr></thead>
+          <tbody id="res"></tbody>
+        </table></div>
+        <ul class="notes" id="notes"></ul>
+      </div>
+
+      <div class="charts">
+        <div class="card chart wide">
+          <h3>Cooper-Jacob · s – log t</h3>
+          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="h"></i>puncte excluse</span><span><i class="l"></i>dreapta ajustată</span><span><i class="t"></i>t₀</span></div>
+          <div id="chCJ"></div>
+          <p class="cap" id="capCJ"></p>
+        </div>
+        <div class="card chart">
+          <h3>Theis · log s – log t</h3>
+          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="d"></i>curba Theis</span></div>
+          <div id="chTH"></div>
+          <p class="cap" id="capTH"></p>
+        </div>
+        <div class="card chart">
+          <h3>Revenire · s′ – log(t/t′)</h3>
+          <div class="legend"><span><i class="f"></i>puncte folosite</span><span><i class="l"></i>dreapta ajustată</span></div>
+          <div id="chRE"></div>
+          <p class="cap" id="capRE"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RAPORT ===================== -->
+<section id="tab-rep" role="tabpanel" aria-labelledby="tb-rep" hidden>
+  <div class="rep-bar">
+    <div><div class="eyebrow">Previzualizare A4</div><h2 style="font-size:1.6rem;color:var(--deep)">Raportul de interpretare</h2></div>
+    <div class="btns">
+      <button class="btn big" id="btnPdf2" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Descarcă PDF</button>
+      <button class="btn ghost" id="btnPrint" type="button">Tipărește</button>
+    </div>
+  </div>
+  <p class="help" style="margin-top:8px">Raportul se actualizează din datele de pe fila Calcul. „Descarcă PDF” salvează direct fișierul; „Tipărește” deschide fereastra de imprimare, unde poți alege și „Salvare ca PDF” (text selectabil, calitate vectorială).</p>
+  <div class="preview" id="preview"></div>
+</section>
+
+<!-- ===================== PROCEDURĂ ===================== -->
+<section id="tab-proc" role="tabpanel" aria-labelledby="tb-proc" hidden>
+  <div class="proc">
+    <nav class="toc" aria-label="Cuprins">
+      <a href="#p-principiu">Principiul</a>
+      <a href="#p-pregatire">Date necesare</a>
+      <a href="#p-config">Puțuri și piezometre</a>
+      <a href="#p-echip">Echipament</a>
+      <a href="#p-etape">Etapele testului</a>
+      <a href="#p-citiri">Frecvența citirilor</a>
+      <a href="#p-jurnal">Fișa de teren</a>
+      <a href="#p-interp">Alegerea metodei</a>
+      <a href="#p-grafic">Forma graficului</a>
+      <a href="#p-greseli">Greșeli frecvente</a>
+      <a href="#p-ref">Referințe</a>
+    </nav>
+    <div class="doc">
+      <div class="card" id="p-principiu">
+        <h2>Principiul</h2>
+        <p>Se pompează dintr-un puț cu debit constant și se măsoară cât și cât de repede coboară nivelul apei, în puț și în piezometre aflate la distanțe cunoscute. Un strat permeabil cedează apa ușor, deci nivelul coboară puțin; un strat slab permeabil produce o coborâre mare.</p>
+        <p>Din evoluția denivelării în timp rezultă <b>transmisivitatea T</b> (m²/zi), adică ușurința cu care stratul, pe toată grosimea lui, lasă apa să curgă, și <b>coeficientul de înmagazinare S</b>. Permeabilitatea (coeficientul de filtrare) se obține din <b>K = T / b</b>, unde b este grosimea stratului pompat (la nivel liber, grosimea saturată).</p>
+      </div>
+
+      <div class="card" id="p-pregatire">
+        <h2>Date necesare înainte de proiectarea testului</h2>
+        <ul>
+          <li>Stratigrafia din foraje: adâncimea acoperișului și a culcușului stratului acvifer, deci grosimea b.</li>
+          <li>Tipul acviferului: sub presiune (acoperit de un strat impermeabil, nivelul urcă în foraj peste acoperiș) sau cu nivel liber.</li>
+          <li>O estimare a lui K (din granulometrie sau din experiență), ca să alegi debitul, distanțele piezometrelor și durata.</li>
+          <li>Limitele hidraulice din zonă: râuri, lacuri, pereți etanși, alte pompări active.</li>
+          <li>Locul de evacuare a apei, departe de zona de influență, și avizele necesare pentru deversare.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-config">
+        <h2>Puțul de pompare și piezometrele</h2>
+        <div class="diag" role="img" aria-label="Schemă: puț de pompare, trei piezometre la distanțe r1, r2, r3, conul de depresie și grosimea stratului b">
+          <svg viewBox="0 0 660 290" xmlns="http://www.w3.org/2000/svg" font-family="Barlow, Arial, sans-serif" font-size="12">
+            <rect x="20" y="34" width="620" height="76" fill="#e7e1d6"/>
+            <rect x="20" y="110" width="620" height="100" fill="#f6ead6"/>
+            <rect x="20" y="210" width="620" height="28" fill="#d9d2c4"/>
+            <line x1="20" y1="34" x2="640" y2="34" stroke="#10252f" stroke-width="1.5"/>
+            <text x="26" y="104" fill="#587080">acoperiș</text>
+            <text x="300" y="200" fill="#10252f">strat acvifer pompat</text>
+            <text x="26" y="230" fill="#587080">culcuș impermeabil</text>
+            <polyline points="20,62 640,62" stroke="#587080" stroke-width="1.2" stroke-dasharray="6 4" fill="none"/>
+            <text x="470" y="56" fill="#587080">nivel static</text>
+            <polyline points="87,152 100,128 120,114 160,100 200,92 260,83 330,76 420,70 520,65 640,62" stroke="#1479a3" stroke-width="2.2" fill="none"/>
+            <text x="168" y="126" fill="#1479a3" font-weight="600">con de depresie</text>
+            <rect x="73" y="22" width="14" height="190" fill="#fff" stroke="#10252f" stroke-width="1.2"/>
+            <line x1="80" y1="112" x2="80" y2="208" stroke="#1479a3" stroke-width="3" stroke-dasharray="3 2"/>
+            <text x="30" y="16" fill="#10252f">puț de pompare, Q</text>
+            <rect x="197" y="26" width="6" height="184" fill="#fff" stroke="#10252f"/><line x1="200" y1="140" x2="200" y2="206" stroke="#1479a3" stroke-width="3" stroke-dasharray="3 2"/><rect x="195" y="90" width="10" height="3" fill="#1479a3"/>
+            <rect x="327" y="26" width="6" height="184" fill="#fff" stroke="#10252f"/><line x1="330" y1="140" x2="330" y2="206" stroke="#1479a3" stroke-width="3" stroke-dasharray="3 2"/><rect x="325" y="74" width="10" height="3" fill="#1479a3"/>
+            <rect x="517" y="26" width="6" height="184" fill="#fff" stroke="#10252f"/><line x1="520" y1="140" x2="520" y2="206" stroke="#1479a3" stroke-width="3" stroke-dasharray="3 2"/><rect x="515" y="63" width="10" height="3" fill="#1479a3"/>
+            <text x="190" y="20" fill="#10252f">P1</text><text x="320" y="20" fill="#10252f">P2</text><text x="510" y="20" fill="#10252f">P3</text>
+            <line x1="212" y1="62" x2="212" y2="91" stroke="#587080"/><text x="216" y="81" fill="#1479a3" font-weight="600">s</text>
+            <g stroke="#587080" fill="none">
+              <line x1="80" y1="252" x2="200" y2="252"/><line x1="80" y1="266" x2="330" y2="266"/><line x1="80" y1="280" x2="520" y2="280"/>
+              <line x1="80" y1="244" x2="80" y2="284"/><line x1="200" y1="246" x2="200" y2="256"/><line x1="330" y1="260" x2="330" y2="270"/><line x1="520" y1="274" x2="520" y2="284"/>
+              <line x1="628" y1="110" x2="628" y2="210"/><line x1="622" y1="110" x2="634" y2="110"/><line x1="622" y1="210" x2="634" y2="210"/>
+            </g>
+            <text x="134" y="248" fill="#587080">r₁</text><text x="250" y="262" fill="#587080">r₂</text><text x="420" y="276" fill="#587080">r₃</text>
+            <text x="612" y="164" fill="#1479a3" font-weight="600">b</text>
+          </svg>
+        </div>
+        <ul>
+          <li><b>Puțul de pompare</b> are filtrul pe toată grosimea stratului (puț complet). Dacă filtrul acoperă doar o parte, curgerea lângă puț devine și verticală, iar formulele simple subestimează K.</li>
+          <li>Puțul trebuie <b>dezvoltat</b> înainte de test (pompare sau pistonare până apa iese limpede, fără nisip), altfel pierderile de sarcină din filtru măresc artificial denivelarea.</li>
+          <li><b>Piezometrele</b>: minimum 2, ideal 3, cu filtrul în același strat și la aceeași cotă ca filtrul puțului, la distanțe crescătoare, aproximativ în progresie geometrică (de exemplu 5–10 m, 20–40 m și 60–100 m în nisipuri și pietrișuri; mai aproape în strate mai puțin permeabile).</li>
+          <li>Piezometrul cel mai îndepărtat trebuie să aibă o denivelare clar măsurabilă la final, orientativ cel puțin 0,1–0,2 m.</li>
+          <li>Dacă puțul nu e complet, piezometrele de interpretare se pun la peste 1,5–2 × b·√(Kh/Kv) de puț, unde efectul penetrării parțiale devine neglijabil.</li>
+          <li>Dacă bănuiești o limită (râu, perete) sau anizotropie, pui piezometre pe două direcții. Un piezometru în stratul de deasupra arată dacă există drenanță.</li>
+          <li>Înainte de test verifici fiecare piezometru: torni apă și urmărești cât de repede revine nivelul. Un piezometru colmatat răspunde cu întârziere.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-echip">
+        <h2>Echipament</h2>
+        <ul>
+          <li>Pompă submersibilă cu vană de reglare pe refulare și <b>clapetă de reținere</b>, ca la oprire apa din coloană să nu cadă înapoi în puț.</li>
+          <li>Debitmetru (de preferat electromagnetic) sau vas etalonat cu cronometru, pentru verificări.</li>
+          <li>Traductoare de presiune cu data-logger în puț și în fiecare piezometru, plus un barologger pentru compensarea presiunii atmosferice.</li>
+          <li>Sondă manuală de nivel pentru citiri de control.</li>
+          <li>Conductă de evacuare care duce apa în afara conului de depresie.</li>
+          <li>Sursă de energie sigură (generator cu rezervă). O oprire în timpul testului îl compromite.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-etape">
+        <h2>Etapele testului</h2>
+        <ol class="steps">
+          <li><div><h3>Monitorizarea nivelului de fond</h3><p>Cu 1–3 zile înainte înregistrezi nivelul în toate punctele, ca să afli dacă are o tendință proprie (râu, presiune atmosferică), pe care o scazi apoi din măsurători.</p></div></li>
+          <li><div><h3>Testul în trepte</h3><p>3–4 trepte de câte 60–120 min, cu debite crescătoare (de exemplu 25, 50, 75 și 100 % din debitul maxim estimat), fără oprire între trepte. Arată randamentul puțului și ajută la alegerea debitului pentru testul principal. Apoi lași nivelul să revină complet.</p></div></li>
+          <li><div><h3>Pomparea cu debit constant</h3><p>Debitul trebuie să producă denivelare măsurabilă în piezometrul cel mai îndepărtat, fără să coboare nivelul în puț până la pompă. Îl menții constant, practic în limita a ±5 %. Durata orientativă: <b>minimum 24 h</b> pentru strat sub presiune, <b>48–72 h</b> pentru nivel liber. Testul e suficient de lung când dreapta finală din graficul s – log t acoperă cel puțin un ciclu logaritmic.</p></div></li>
+          <li><div><h3>Revenirea</h3><p>Oprești pompa brusc, notezi ora exactă și continui citirile cu aceeași frecvență ca la pornire, cel puțin cât a durat pomparea sau până la revenirea a 90–95 % din denivelare.</p></div></li>
+        </ol>
+      </div>
+
+      <div class="card" id="p-citiri">
+        <h2>Frecvența citirilor</h2>
+        <p>Denivelarea se schimbă repede la început și tot mai lent apoi, de aceea citirile se îndesesc la pornire. Aceeași grilă se aplică după oprire, cu timpul măsurat de la oprire.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Timp de la pornire / oprire</th><th>Interval între citiri</th></tr></thead>
+          <tbody>
+            <tr><td>0 – 2 min</td><td class="n">10 – 15 s</td></tr>
+            <tr><td>2 – 10 min</td><td class="n">30 s – 1 min</td></tr>
+            <tr><td>10 – 60 min</td><td class="n">5 min</td></tr>
+            <tr><td>1 – 2 h</td><td class="n">10 min</td></tr>
+            <tr><td>2 – 6 h</td><td class="n">30 min</td></tr>
+            <tr><td>6 – 24 h</td><td class="n">1 h</td></tr>
+            <tr><td>peste 24 h</td><td class="n">2 – 4 h</td></tr>
+          </tbody>
+        </table></div>
+        <p class="help">Debitul: la pornire, după 10, 30 și 60 min, apoi orar. Grila este orientativă, de practică uzuală.</p>
+      </div>
+
+      <div class="card" id="p-jurnal">
+        <h2>Ce se notează în fișa de teren</h2>
+        <ul>
+          <li>Ora exactă de pornire și oprire, cu ceasurile tuturor echipelor și ale loggerelor sincronizate.</li>
+          <li>Debitul și orice ajustare a vanei, cu ora.</li>
+          <li>Reperul de măsură al fiecărui punct și distanța lui față de puț.</li>
+          <li>Presiunea atmosferică, precipitațiile, nivelul râului dacă există unul aproape.</li>
+          <li>Aspectul apei (turbiditate, nisip), temperatura.</li>
+          <li>Orice incident: oprire de curent, pompare în puțuri vecine. La o întrerupere lungă aștepți revenirea și reiei testul.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-interp">
+        <h2>Alegerea metodei de interpretare</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Metodă</th><th>Când se folosește</th><th>Ce dă</th></tr></thead>
+          <tbody>
+            <tr><td class="m">Cooper-Jacob</td><td>Date dintr-un piezometru sau din puț, după ce u = r²S/(4Tt) &lt; 0,05.</td><td>T; S doar din piezometru</td></tr>
+            <tr><td class="m">Theis</td><td>Tot setul de date tranzitorii; la nivel liber cu corecția Jacob, cât timp s &lt; aprox. 25 % din b.</td><td>T și S</td></tr>
+            <tr><td class="m">Revenire</td><td>Verificare independentă; potrivită și pentru puțul de pompare.</td><td>T</td></tr>
+            <tr><td class="m">Thiem</td><td>Regim stabilizat, minimum două piezometre.</td><td>T (sau K la nivel liber)</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="card" id="p-grafic">
+        <h2>Ce arată forma graficului s – log t</h2>
+        <ul>
+          <li><b>Dreaptă cu pantă constantă</b>: acvifer practic infinit și omogen, cazul ideal.</li>
+          <li><b>Panta crește</b> (se dublează la o singură limită): conul a atins o limită impermeabilă. Folosești doar porțiunea dinainte.</li>
+          <li><b>Panta scade până la orizontal</b>: alimentare (râu, lac) sau drenanță. T se ia din porțiunea dinainte de aplatizare.</li>
+          <li><b>Formă de S</b> la nivel liber: cedare întârziată. T și S de lucru se iau din datele târzii.</li>
+          <li><b>Primele minute curbate</b> în puțul de pompare: efectul volumului de apă din puț, aproximativ pentru t &lt; 25·r<sub>c</sub>²/T. Se exclud.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-greseli">
+        <h2>Greșeli frecvente</h2>
+        <ul>
+          <li>Debit care variază în timpul testului.</li>
+          <li>Apă evacuată prea aproape, care se reinfiltrează și aplatizează curba ca o falsă alimentare.</li>
+          <li>Piezometre filtrate în alt strat sau colmatate.</li>
+          <li>Ceasuri nesincronizate: câteva secunde contează în primele minute.</li>
+          <li>Test prea scurt, care nu ajunge pe porțiunea dreaptă a graficului.</li>
+          <li>K = T/b calculat cu un b greșit, de exemplu lungimea filtrului în loc de grosimea stratului.</li>
+        </ul>
+      </div>
+
+      <div class="card" id="p-ref">
+        <h2>Referințe</h2>
+        <ul>
+          <li>SR EN ISO 22282-4:2012 — Cercetări și încercări geotehnice. Încercări geohidraulice. Partea 4: Încercări de pompare.</li>
+          <li>Kruseman, G.P., de Ridder, N.A. — <i>Analysis and Evaluation of Pumping Test Data</i>, ed. a 2-a, ILRI Publication 47, 1990.</li>
+          <li>ASTM D4050 — procedura de teren pentru teste de pompare; ASTM D4106 — interpretarea prin metoda Theis.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="site wrap">Calculele rulează local, în browser; datele introduse nu sunt trimise nicăieri și rămân salvate pe acest dispozitiv.</footer>
+
+<div class="busy" id="busy" hidden><div class="busy-box"><div class="spin"></div><span id="busyMsg">Generez raportul…</span></div></div>
+<div id="reportBuild" aria-hidden="true"></div>
+
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/report.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
