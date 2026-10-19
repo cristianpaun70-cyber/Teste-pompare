@@ -49,18 +49,21 @@
           else { const y = sy(v); be.line(m.l, y, m.l + pw, y, k === 1 ? G : Gm); if (k === 1) be.text(m.l - 7, y + 4, decLabel(e), Object.assign({ anchor: "end" }, T)); }
         }
     };
+    const xf = o.xfmt || (v => fs(v, 4)), yf = o.yfmt || (v => fs(v, 3));
     if (o.xLog) logAxis(o.x0, o.x1, true);
+    else niceTicks(o.x0, o.x1, 6).t.forEach(v => { const x = sx(v); be.line(x, m.t, x, m.t + ph, G); be.text(x, m.t + ph + 16, xf(v), Object.assign({ anchor: "middle" }, T)); });
     if (o.yLog) logAxis(o.y0, o.y1, false);
-    else niceTicks(o.y0, o.y1, 5).t.forEach(v => { const y = sy(v); be.line(m.l, y, m.l + pw, y, G); be.text(m.l - 7, y + 4, fs(v, 3), Object.assign({ anchor: "end" }, T)); });
+    else niceTicks(o.y0, o.y1, 5).t.forEach(v => { const y = sy(v); be.line(m.l, y, m.l + pw, y, G); be.text(m.l - 7, y + 4, yf(v), Object.assign({ anchor: "end" }, T)); });
     const A = { stroke: pal.axis, width: 1.1 };
     be.line(m.l, m.t + ph, m.l + pw, m.t + ph, A); be.line(m.l, m.t, m.l, m.t + ph, A);
     be.clip(m.l, m.t, pw, ph);
     (o.series || []).forEach(s => {
       const col = s.color || (s.type === "pts" ? pal.pt : pal.fit);
       if (s.type === "line" && s.data.length > 1)
-        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), { stroke: s.type === "line" && s.color ? darker(col, 0.82) : col, width: s.dash ? 1.8 : 2.1, dash: s.dash ? [6, 4] : null });
+        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), { stroke: s.color && !s.keep ? darker(col, 0.82) : col, width: s.dash ? 1.8 : 2.1, dash: s.dash ? [6, 4] : null });
       if (s.type === "pts") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 3.6, p[2] ? { fill: col, stroke: col, width: 1.4 } : { fill: "none", stroke: col, width: 1.4 }));
-      if (s.type === "mk") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 4.6, { fill: col, stroke: "#ffffff", width: 1.5 }));
+      if (s.type === "mk") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), s.r || 4.6, { fill: col, stroke: "#ffffff", width: 1.5 }));
+      if (s.type === "text") be.text(sx(s.x), sy(s.y), s.text, { size: 11, weight: 600, color: col, family: pal.font, anchor: s.anchor || "start" });
     });
     be.unclip();
     const L = { size: 12.5, weight: 600, color: pal.label, family: pal.font, anchor: "middle" };
@@ -164,8 +167,35 @@
     return { xLog: true, x0, x1, y0: 0, y1, series: ser, xl: "distanța de la puț r (m)", yl: `denivelare s (m) la t = ${fs(d.tstar)} min` };
   }
 
+
+  /* testul în trepte */
+  function specStepSQ(st) {
+    if (!st || !isFinite(st.B) || st.rows.length < 2) return null;
+    const qmax = Math.max(...st.rows.map(r => r.Qd)), x1 = niceMax(qmax * 1.1);
+    const ys = st.rows.map(r => r.sq * 1000).concat([st.B * 1000, (st.B + st.C * x1) * 1000]);
+    const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.25 || hi * 0.1;
+    const t = niceTicks(Math.max(0, lo - pad), hi + pad, 5);
+    return { xLog: false, x0: 0, x1, y0: t.t[0], y1: t.t[t.t.length - 1], xfmt: v => fs(v, 5), yfmt: v => fs(v, 3),
+      series: [{ type: "line", data: [[0, st.B * 1000], [x1, (st.B + st.C * x1) * 1000]] }, { type: "pts", data: st.rows.map(r => [r.Qd, r.sq * 1000, true]) }, { type: "mk", data: [[0, st.B * 1000]] }],
+      xl: "debitul Q (m³/zi)", yl: "s/Q (10⁻³ zi/m²)" };
+  }
+  function specStepS(st) {
+    if (!st || !isFinite(st.B) || st.rows.length < 2) return null;
+    const qs = st.rows.map(r => r.Qd).concat([st.Qmax || 0, st.sel ? st.sel.Qd : 0, st.pred ? st.pred.Qd : 0]);
+    const x1 = niceMax(Math.max(...qs) * 1.15);
+    const cv = []; for (let i = 0; i <= 60; i++) { const q = x1 * i / 60; cv.push([q, st.sOf(q)]); }
+    const ymax = niceMax(Math.max(st.sOf(x1), st.sdisp || 0) * 1.05);
+    const ser = [{ type: "line", color: "#0b4f6c", keep: true, data: cv }, { type: "pts", data: st.rows.map(r => [r.Qd, r.s, true]) }];
+    if (isFinite(st.sdisp)) { ser.push({ type: "line", color: "#cf5444", keep: true, dash: true, data: [[0, st.sdisp], [x1, st.sdisp]] }, { type: "text", x: x1 * 0.02, y: st.sdisp + ymax * 0.025, text: "denivelarea disponibilă", color: "#cf5444" }); }
+    if (isFinite(st.slim)) { ser.push({ type: "line", color: "#c98a0c", keep: true, dash: true, data: [[0, st.slim], [x1, st.slim]] }, { type: "text", x: x1 * 0.02, y: st.slim + ymax * 0.025, text: `limita de lucru ${fs(st.pct * 100)} %`, color: "#a06a05" }); }
+    if (isFinite(st.Qmax)) ser.push({ type: "line", color: "#c98a0c", keep: true, dash: true, data: [[st.Qmax, 0], [st.Qmax, st.slim]] }, { type: "mk", color: "#c98a0c", data: [[st.Qmax, st.slim]] }, { type: "text", x: st.Qmax, y: ymax * 0.05, text: ` Q max = ${fs(st.Qmax / 24)} m³/h`, color: "#a06a05" });
+    if (st.sel) ser.push({ type: "line", color: "#2a9d8f", keep: true, data: [[st.sel.Qd, 0], [st.sel.Qd, st.sel.s]] }, { type: "mk", color: "#2a9d8f", r: 5.5, data: [[st.sel.Qd, st.sel.s]] });
+    if (st.pred) ser.push({ type: "mk", color: "#8a5cc2", r: 5, data: [[st.pred.Qd, st.pred.s]] });
+    return { xLog: false, x0: 0, x1, y0: 0, y1: ymax, xfmt: v => fs(v, 5), series: ser, xl: "debitul Q (m³/zi)", yl: "denivelarea în puț s (m)" };
+  }
+
   function toSVG(o, w, h, pal) { return draw(svgBackend(), o, w, h, pal); }
   function toPNG(o, w, h, scale, pal) { return draw(canvasBackend(scale || 3), o, w, h, pal); }
 
-  global.PTChart = { specCJ, specTH, specRE, specDist, toSVG, toPNG, PAL };
+  global.PTChart = { specCJ, specTH, specRE, specDist, specStepSQ, specStepS, toSVG, toPNG, PAL };
 })(window);

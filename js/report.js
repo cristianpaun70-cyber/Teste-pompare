@@ -24,9 +24,10 @@
   }
   const h2 = (no, title) => `<div class="h2"><span class="no">${no}</span><span class="tt">${title}</span></div>`;
   const ptTitle = p => `<div class="h3">${dot(p.color)}${esc(p.name)}${p.isPW ? " — puțul de pompare" : ""} · r = ${fs(p.r, 4)} m</div>`;
-  function fig(spec, legend, caption) {
+  function fig(spec, legend, caption, w, h) {
     if (!spec) return "";
-    return `<div class="fig">${legend ? `<div class="fl">${legend}</div>` : ""}<img src="${C.toPNG(spec, 680, 265, 3)}" width="680" height="265" style="aspect-ratio:680/265" alt=""><div class="fc">${caption}</div></div>`;
+    w = w || 680; h = h || 265;
+    return `<div class="fig">${legend ? `<div class="fl">${legend}</div>` : ""}<img src="${C.toPNG(spec, w, h, 3)}" width="${w}" height="${h}" style="aspect-ratio:${w}/${h}" alt=""><div class="fc">${caption}</div></div>`;
   }
   const legPts = (pts, extra) => pts.map(p => `<span>${dot(p.color)}${esc(p.name)} (r = ${fs(p.r)} m)</span>`).join("") + (extra || "");
 
@@ -75,10 +76,11 @@
           <div class="tile s"><span class="k">Înmagazinare S</span><span class="v">${sS(S.S)}</span><span class="u">${isFinite(S.S) ? "media piezometrelor" : "nedeterminat"}</span></div>
           <div class="tile t"><span class="k">Interval K</span><span class="v">${b > 0 && S.n > 1 ? fs(S.Kmin) + "–" + fs(S.Kmax) : "—"}</span><span class="u">${S.n} rezultate · m/zi</span></div>
         </div>
-        <table><thead><tr><th>Punct</th><th>Metodă</th><th class="n">T (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th><th class="n">S</th></tr></thead><tbody>
-        ${res.all.map(x => `<tr><td class="m">${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${sS(x.S)}</td></tr>`).join("")}
-        <tr class="mean"><td colspan="2">Medie aritmetică</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td><td class="n">${sS(S.S)}</td></tr>
-        </tbody></table>`));
+        <table><thead><tr><th>Punct</th><th>Metodă</th><th class="n">T (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th><th class="n">S</th><th>În medie</th></tr></thead><tbody>
+        ${res.all.map(x => `<tr${x.included ? "" : ' style="color:#9aaab3"'}><td class="m"${x.included ? "" : ' style="color:#9aaab3"'}>${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${sS(x.S)}</td><td>${x.included ? "da" : "<b style='color:#a06a05'>nu</b>"}</td></tr>`).join("")}
+        <tr class="mean"><td colspan="2">Medie (${S.n} rezultate incluse)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td><td class="n">${sS(S.S)}</td><td></td></tr>
+        </tbody></table>
+        ${S.nExcl ? `<p style="font-size:8.8pt;color:#587080;margin-top:2mm">Rezultate excluse din medie: ${res.all.filter(x => !x.included).map(x => `${esc(x.pt)} ${x.method} — ${x.overridden ? "exclus de inginer" : esc(x.reasons.join("; "))}`).join("; ")}.</p>` : ""}`));
     }
     if (res.notes.length) B.push(el(`<div class="h3">Observații de verificare</div><div class="rnotes">${res.notes.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join("")}</div>`));
     B.push(el(`<div class="h3">Ipotezele metodelor de interpretare</div><ul class="hyp">
@@ -86,6 +88,30 @@
       <li>puțul de pompare este complet (filtrul acoperă toată grosimea stratului), iar curgerea spre puț este radială și orizontală;</li>
       <li>debitul pompat este constant pe toată durata testului, iar nivelul inițial este practic orizontal;</li>
       <li>apa este cedată instantaneu din înmagazinare la scăderea sarcinii${I.unconf ? "; pentru nivel liber, denivelările sunt corectate cu relația Jacob" : ""}.</li></ul>`));
+
+
+    // testul în trepte
+    const st = res.step;
+    if (st && isFinite(st.B) && st.rows.length >= 2) {
+      B.push(el(h2(++no, "Testul în trepte (randamentul puțului)") + `
+        <p>Denivelarea din puțul pompat are două componente: coborârea nivelului în strat, proporțională cu debitul (B·Q), și pierderea de sarcină la intrarea apei prin pietrișul de filtru și filtru, care crește cu pătratul debitului (C·Q²). Împărțind la Q se obține o dreaptă s/Q = B + C·Q: intersecția cu axa dă B, panta dă C. Cu legea puțului se alege debitul testului principal și se estimează denivelarea din puț la orice debit. Testul în trepte nu se folosește pentru K de proiectare.</p>
+        <div class="eqs">
+          ${eq(`${v("s")} = ${v("B")}·${v("Q")} + ${v("C")}·${v("Q")}²&nbsp;&nbsp;&nbsp;&nbsp; ${fr(v("s"), v("Q"))} = ${v("B")} + ${v("C")}·${v("Q")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("E")} = ${fr(v("B") + "·" + v("Q"), v("B") + "·" + v("Q") + " + " + v("C") + "·" + v("Q") + "²")}`, "legea puțului")}
+          ${eq(`${v("s")}<sub>disp</sub> = ${v("z")}<sub>pompă</sub> − ${v("NS")} − rezervă&nbsp;&nbsp;&nbsp;&nbsp; ${v("Q")}<sub>max</sub> = ${fr("−" + v("B") + " + √(" + v("B") + "² + 4·" + v("C") + "·" + v("s") + "<sub>lim</sub>)", "2·" + v("C"))}`, "debitul maxim")}
+        </div>`));
+      B.push(el(`<table><thead><tr><th>Treapta</th><th class="n">Q (m³/h)</th><th class="n">Q (m³/zi)</th><th class="n">s (m)</th><th class="n">s/Q (zi/m²)</th><th class="n">E</th></tr></thead><tbody>
+        ${st.rows.map((r, k) => `<tr><td class="m">${k + 1}</td><td class="n">${fs(r.Qh, 4)}</td><td class="n">${fs(r.Qd, 5)}</td><td class="n">${fd(r.s, 3)}</td><td class="n">${sci(r.sq, 3)}</td><td class="n">${isFinite(r.E) ? fs(r.E * 100, 2) + " %" : "—"}</td></tr>`).join("")}
+        </tbody></table>`));
+      B.push(el(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm">${fig(C.specStepSQ(st), "", "s/Q în funcție de Q; intersecția cu axa dă B.", 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}${fig(C.specStepS(st), "", "Legea puțului, denivelarea disponibilă (roșu), limita de lucru și Q max (galben), debitul ales (verde).", 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}</div>`));
+      const sel = st.sel;
+      B.push(el(`<div class="calc">
+        ${cl("Dreapta s/Q – Q", `${v("B")} = ${R(sci(st.B, 3) + " zi/m²")}&nbsp; ${v("C")} = ${R(st.C > 0 ? sci(st.C, 3) + " zi²/m⁵" : "nedeterminat")}${st.rows.length > 2 ? `&nbsp; (R² = ${fs(st.r2, 4)})` : ""}`)}
+        ${isFinite(st.sdisp) ? cl("Denivelarea disponibilă", `${v("s")}<sub>disp</sub> = ${fs(st.zp, 4)} − ${fs(st.NS, 4)} − ${fs(st.rez, 3)} = ${R(fd(st.sdisp, 2) + " m")};&nbsp; ${v("s")}<sub>lim</sub> = ${fs(st.pct * 100)} % × ${fd(st.sdisp, 2)} = ${fd(st.slim, 2)} m`) : ""}
+        ${isFinite(st.Qmax) ? cl("Debitul maxim", `${v("Q")}<sub>max</sub> = ${R(fs(st.Qmax, 4) + " m³/zi")} = ${fs(st.Qmax / 24)} m³/h`) : ""}
+        ${sel ? cl("La debitul ales", `${v("Q")} = ${fs(sel.Qh)} m³/h = ${fs(sel.Qd, 5)} m³/zi;&nbsp; ${v("s")} = ${fd(st.B * sel.Qd, 2)} + ${fd(st.Ceff * sel.Qd * sel.Qd, 2)} = ${R(fd(sel.s, 2) + " m")};&nbsp; ${v("E")} = ${R(fs(sel.E * 100, 2) + " %")}`) : ""}
+        ${st.pred ? cl("Estimare", `la ${v("Q")} = ${fs(st.pred.Qh)} m³/h denivelarea în puț este ${R(fd(st.pred.s, 2) + " m")}`) : ""}
+      </div>${st.notes.length ? `<div class="rnotes" style="margin-top:3mm">${st.notes.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join("")}</div>` : ""}`));
+    }
 
     const withData = P.filter(p => p.pump.length);
 
@@ -190,9 +216,9 @@
         <div class="eqs">${eq(`${v("K")} = ${fr(v("T"), v("b"))}&nbsp;&nbsp;&nbsp;&nbsp; ${v("K")}<sub>[m/s]</sub> = ${fr(v("K") + "<sub>[m/zi]</sub>", "86 400")}`)}${I.qu !== "md" ? eq(`${v("Q")} = ${n4(I.Qin)} ${I.quLabel} × ${I.qf} = ${n4(Q)} m³/zi`, "conversia debitului") : ""}</div>
         ${corrTxt}`));
       B.push(el(`<table><thead><tr><th>Punct</th><th>Metodă</th><th class="n">T (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th></tr></thead><tbody>
-        ${res.all.map(x => `<tr><td class="m">${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td></tr>`).join("")}
-        <tr class="mean"><td colspan="2">Medie aritmetică</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td></tr></tbody></table>
-        <p style="margin-top:3mm">${S.n > 1 ? `Rezultatele sunt ${S.spread < 0.2 ? "apropiate" : "diferite"} (abatere maximă ${fs(S.spread * 100, 2)} % față de medie). ` : ""}Valoarea medie este o medie aritmetică a rezultatelor; valoarea de proiectare se stabilește de inginer, ținând seama de graficele și observațiile din raport.</p>
+        ${res.all.filter(x => x.included).map(x => `<tr><td class="m">${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td></tr>`).join("")}
+        <tr class="mean"><td colspan="2">Medie aritmetică (rezultate incluse)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td></tr></tbody></table>
+        <p style="margin-top:3mm">${S.n > 1 ? `Rezultatele sunt ${S.spread < 0.2 ? "apropiate" : "diferite"} (abatere maximă ${fs(S.spread * 100, 2)} % față de medie). ` : ""}Valoarea medie este media aritmetică a rezultatelor incluse; rezultatele care nu trec verificările sunt excluse. Valoarea de proiectare se stabilește de inginer, ținând seama de graficele și observațiile din raport.</p>
         <div class="sign"><div>Întocmit</div><div>Verificat</div></div>`));
     }
 

@@ -197,6 +197,48 @@
     return pt;
   }
 
+
+  /* ---------- testul în trepte ---------- */
+  function analyzeStep(st) {
+    if (!st) return null;
+    const NS = num(st.ns), zp = num(st.zp), rez = isFinite(num(st.rez)) ? num(st.rez) : 1.5, pct = isFinite(num(st.pct)) ? num(st.pct) / 100 : 0.7;
+    const modeH = st.mode !== "s";
+    const rows = (st.rows || []).map((r, i) => ({ i, Qh: num(r.q), v: num(r.v) })).filter(r => r.Qh > 0 && isFinite(r.v))
+      .map(r => { const s = modeH ? r.v - NS : r.v, Qd = r.Qh * 24; return Object.assign(r, { s, Qd, sq: s / Qd }); }).filter(r => r.s > 0);
+    const out = { NS, zp, rez, pct, modeH, rows, notes: [] };
+    if (modeH && !isFinite(NS)) out.notes.push(["bad", "Introdu nivelul static al puțului."]);
+    if (rows.length < 2) return rows.length ? out : (isFinite(NS) || isFinite(zp) ? out : null);
+    const L = linreg(rows.map(r => r.Qd), rows.map(r => r.sq));
+    if (!L) return out;
+    out.B = L.a; out.C = L.m; out.r2 = L.r2;
+    if (out.C <= 0) out.notes.push(["warn", "Panta dreptei s/Q – Q iese zero sau negativă: pierderile neliniare din puț nu se pot determina (treptele au durate diferite sau puțul s-a dezvoltat în timpul testului). Se folosește doar B."]);
+    if (out.B <= 0) out.notes.push(["bad", "B iese zero sau negativ: verifică debitele și nivelurile treptelor."]);
+    if (rows.length >= 3 && L.r2 < 0.9) out.notes.push(["warn", `Punctele s/Q nu stau bine pe o dreaptă (R² = ${fs(L.r2, 3)}). Verifică dacă treptele au avut aceeași durată.`]);
+    const C = Math.max(out.C, 0), B = out.B;
+    const sOf = Q => B * Q + C * Q * Q;
+    out.sOf = sOf; out.Ceff = C;
+    rows.forEach(r => { r.E = B > 0 ? B * r.Qd / sOf(r.Qd) : NaN; });
+    if (isFinite(zp) && isFinite(NS)) {
+      out.sdisp = zp - NS - rez; out.slim = pct * out.sdisp;
+      if (out.sdisp > 0 && B > 0) out.Qmax = C > 0 ? (-B + Math.sqrt(B * B + 4 * C * out.slim)) / (2 * C) : out.slim / B;
+      else out.notes.push(["bad", "Denivelarea disponibilă iese zero sau negativă: verifică adâncimea pompei, nivelul static și rezerva."]);
+    }
+    const qs = num(st.qsel);
+    if (qs > 0 && B > 0) {
+      const Qd = qs * 24, s = sOf(Qd);
+      out.sel = { Qh: qs, Qd, s, E: B * Qd / s };
+      if (isFinite(out.Qmax)) out.notes.push(Qd <= out.Qmax ? ["ok", `Debitul ales (${fs(qs)} m³/h) este sub debitul maxim (${fs(out.Qmax / 24)} m³/h): denivelarea estimată în puț este ${fs(s)} m.`]
+        : ["bad", `Debitul ales (${fs(qs)} m³/h) depășește debitul maxim (${fs(out.Qmax / 24)} m³/h): nivelul din puț ar coborî prea aproape de pompă.`]);
+      const E = out.sel.E;
+      out.notes.push(E >= 0.8 ? ["ok", `Randamentul puțului la debitul ales: ${fs(E * 100, 2)} % (peste 80 %): puț bine executat și dezvoltat.`]
+        : E >= 0.5 ? ["warn", `Randamentul puțului la debitul ales: ${fs(E * 100, 2)} % (între 50 și 80 %): acceptabil; ține cont de pierderile din puț la proiectare.`]
+          : ["bad", `Randamentul puțului la debitul ales: ${fs(E * 100, 2)} % (sub 50 %): pierderi mari în filtru; puțul trebuie redezvoltat.`]);
+    }
+    const qp = num(st.qpred);
+    if (qp > 0 && B > 0) out.pred = { Qh: qp, Qd: qp * 24, s: sOf(qp * 24) };
+    return out;
+  }
+
   /* interpolare în scară log a timpului */
   function sAt(pump, t) {
     const P = pump.filter(p => isFinite(p.s));
@@ -260,23 +302,45 @@
       }
     }
 
-    /* sinteză */
+    /* sinteză: fiecare rând = un rezultat (punct × metodă), cu verificare automată */
     const all = [];
-    points.forEach(p => [["Cooper-Jacob", p.cj], ["Theis", p.th], ["Revenire", p.re]].forEach(([m, x]) => { if (x) all.push({ pt: p.name, method: m, T: x.T, K: x.K, S: p.isPW ? NaN : x.S, pw: p.isPW }); }));
-    if (dist) all.push({ pt: dist.vals.map(v => v.name).join("–"), method: inp.unconf && dist.dupuitK ? "Dupuit-Thiem" : "Distanță–denivelare (Thiem)", T: inp.unconf && dist.dupuitT ? dist.dupuitT : dist.T, K: inp.unconf && dist.dupuitK ? dist.dupuitK : dist.K, S: inp.unconf && dist.dupuitK ? NaN : dist.S });
-    const Ts = all.map(x => x.T).filter(isFinite);
+    const incl = raw.incl || {};
+    const push = (key, pt, method, x, S, checks, pw) => {
+      const bad = checks.filter(c => c[0]).map(c => c[1]);
+      const valid = bad.length === 0;
+      const included = Object.prototype.hasOwnProperty.call(incl, key) ? !!incl[key] : valid;
+      all.push({ key, pt, method, T: x.T, K: x.K, S, pw, valid, reasons: bad, included, overridden: Object.prototype.hasOwnProperty.call(incl, key) });
+    };
+    points.forEach(p => {
+      if (p.cj) push(`${p.idx}|cj`, p.name, "Cooper-Jacob", p.cj, p.isPW ? NaN : p.cj.S,
+        [[!p.isPW && isFinite(p.cj.u) && p.cj.u >= 0.05, `u = ${fs(p.cj.u, 2)} > 0,05`], [p.cj.r2 < 0.97, `R² = ${fs(p.cj.r2, 3)} < 0,97`]], p.isPW);
+      if (p.th) push(`${p.idx}|th`, p.name, "Theis", p.th, p.isPW ? NaN : p.th.S,
+        [[p.isPW, "în puțul pompat curba Theis e afectată de pierderile din filtru"], [p.th.rmse > 0.05 * p.smax, `eroare ${fs(p.th.rmse * 100, 2)} cm > 5 % din s max`]], p.isPW);
+      if (p.re) push(`${p.idx}|re`, p.name, "Revenire", p.re, NaN,
+        [[Math.abs(p.re.a) > 0.05 * p.smax, `s′ la t/t′ = 1 este ${fs(p.re.a, 2)} m (departe de 0)`], [p.re.r2 < 0.97, `R² = ${fs(p.re.r2, 3)} < 0,97`]], p.isPW);
+    });
+    if (dist) {
+      const du = inp.unconf && dist.dupuitK;
+      push("dist", dist.vals.map(v => v.name).join("–"), du ? "Dupuit-Thiem" : "Distanță–denivelare (Thiem)",
+        { T: du ? dist.dupuitT : dist.T, K: du ? dist.dupuitK : dist.K }, du ? NaN : dist.S,
+        [[dist.uFar >= 0.05, `u = ${fs(dist.uFar, 2)} > 0,05 în cel mai îndepărtat piezometru`], [dist.vals.length >= 3 && dist.r2 < 0.98, `piezometrele nu sunt aliniate (R² = ${fs(dist.r2, 3)})`]], false);
+    }
+    const use = all.filter(x => x.included && isFinite(x.T));
+    const Ts = use.map(x => x.T);
     let summary = null;
+    const nExcl = all.filter(x => !x.included).length;
     if (Ts.length) {
       const Tm = Ts.reduce((a, c) => a + c, 0) / Ts.length, spread = (Math.max(...Ts) - Math.min(...Ts)) / Tm;
-      const Ss = points.filter(p => !p.isPW && p.th).map(p => p.th.S);
-      summary = { n: Ts.length, Tm, Km: b > 0 ? Tm / b : NaN, Kmin: b > 0 ? Math.min(...Ts) / b : NaN, Kmax: b > 0 ? Math.max(...Ts) / b : NaN, spread,
-        S: Ss.length ? Ss.reduce((a, c) => a + c, 0) / Ss.length : (dist && dist.S) || NaN };
+      const Ss = use.map(x => x.S).filter(v => isFinite(v) && v > 0);
+      summary = { n: Ts.length, nAll: all.length, nExcl, Tm, Km: b > 0 ? Tm / b : NaN, Kmin: b > 0 ? Math.min(...Ts) / b : NaN, Kmax: b > 0 ? Math.max(...Ts) / b : NaN, spread,
+        S: Ss.length ? Ss.reduce((a, c) => a + c, 0) / Ss.length : NaN };
       if (Ts.length > 1) notes.unshift(spread < 0.2
-        ? ["ok", `Rezultatele sunt apropiate (abatere maximă ${fs(spread * 100, 2)} % față de medie). Rezultatul este consecvent.`]
-        : ["warn", `Rezultatele diferă cu ${fs(spread * 100, 2)} %. Media este doar orientativă; verifică pe grafice care porțiune a datelor e reprezentativă.`]);
+        ? ["ok", `Rezultatele incluse în medie sunt apropiate (abatere maximă ${fs(spread * 100, 2)} % față de medie). Rezultatul este consecvent.`]
+        : ["warn", `Rezultatele incluse în medie diferă cu ${fs(spread * 100, 2)} % (peste 20 %). Caută cauza (ghid, pasul E5) și exclude rândurile care nu corespund.`]);
     }
-    return { inp, R, points, dist, all, summary, notes, pumpRows: pump, recRows: rec };
+    if (nExcl) notes.unshift(["info", `${nExcl} ${nExcl === 1 ? "rezultat este exclus" : "rezultate sunt excluse"} din medie: ${all.filter(x => !x.included).map(x => `${x.pt} ${x.method}${x.reasons.length && !x.overridden ? " (" + x.reasons.join("; ") + ")" : x.overridden ? " (exclus manual)" : ""}`).join(", ")}.`]);
+    return { inp, R, points, dist, all, summary, notes, pumpRows: pump, recRows: rec, step: analyzeStep(raw.step) };
   }
 
-  global.PT = { W, theisS, linreg, nelder, num, fs, fd, sci, sciTxt, fS, supNum, inRange, analyze, QU, COLORS };
+  global.PT = { W, theisS, linreg, nelder, num, fs, fd, sci, sciTxt, fS, supNum, inRange, analyze, analyzeStep, QU, COLORS };
 })(window);

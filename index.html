@@ -21,6 +21,7 @@
     <p>Trece citirile din teren pentru unul, două sau trei puncte de măsură. Site-ul calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K prin mai multe metode și generează raportul tehnic în PDF, cu formulele aplicate și graficele.</p>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tb-calc" aria-selected="true" aria-controls="tab-calc">Calcul</button>
+      <button class="tab" role="tab" id="tb-step" aria-selected="false" aria-controls="tab-step">Test în trepte</button>
       <button class="tab" role="tab" id="tb-rep" aria-selected="false" aria-controls="tab-rep">Raport PDF</button>
       <button class="tab" role="tab" id="tb-proc" aria-selected="false" aria-controls="tab-proc">Procedură de teren</button>
     </nav>
@@ -137,9 +138,10 @@
     </div>
     <div class="verdict" id="verdict"></div>
     <div class="tbl"><table>
-      <thead><tr><th>Punct</th><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Detalii</th></tr></thead>
+      <thead><tr><th title="Bifat = rezultatul intră în medie">În medie</th><th>Punct</th><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Verificare</th><th>Detalii</th></tr></thead>
       <tbody id="res"></tbody>
     </table></div>
+    <p class="help">Rezultatele care nu trec verificările sunt scoase automat din medie. Poți include sau exclude manual orice rând din căsuța „În medie”.</p>
     <ul class="notes" id="notes"></ul>
   </div>
 
@@ -168,6 +170,54 @@
       <div id="chDI"></div>
       <p class="cap" id="capDI"></p>
     </div>
+  </div>
+</section>
+
+<!-- ===================== TEST ÎN TREPTE ===================== -->
+<section id="tab-step" role="tabpanel" aria-labelledby="tb-step" hidden>
+  <div class="card" style="margin-top:0">
+    <div class="eyebrow">Etapa B din ghid</div>
+    <h2>Testul în trepte</h2>
+    <p class="help" style="font-size:.92rem;max-width:80ch">Treci pentru fiecare treaptă debitul și nivelul din puț de la sfârșitul treptei. Fișa calculează legea puțului s = B·Q + C·Q², debitul maxim pe care îl poți folosi la testul principal și randamentul puțului. Treptele trebuie să aibă aceeași durată.</p>
+  </div>
+  <div class="layout">
+    <aside class="inputs">
+      <fieldset>
+        <legend>Puțul pompat</legend>
+        <div class="field"><label for="st_mode">În tabel trec</label><select id="st_mode"><option value="h">Adâncimea nivelului față de reper (m)</option><option value="s">Direct denivelarea s (m)</option></select></div>
+        <div class="row">
+          <div class="field" id="st_nsWrap"><label for="st_ns">Nivel static (m)</label><input id="st_ns" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="st_zp">Adâncimea aspirației pompei (m)</label><input id="st_zp" type="text" inputmode="decimal"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="st_rez">Rezervă deasupra pompei (m)</label><input id="st_rez" type="text" inputmode="decimal" placeholder="1,5"></div>
+          <div class="field"><label for="st_pct">Limită de lucru (%)</label><input id="st_pct" type="text" inputmode="decimal" placeholder="70"></div>
+        </div>
+        <span class="help">Adâncimea pompei și nivelul static se măsoară față de același reper. Limita de lucru este procentul din denivelarea disponibilă pe care nu îl depășești la testul principal.</span>
+      </fieldset>
+      <fieldset>
+        <legend>Debite de verificat</legend>
+        <div class="row">
+          <div class="field"><label for="st_qsel">Debitul ales pentru testul principal (m³/h)</label><input id="st_qsel" type="text" inputmode="decimal"></div>
+          <div class="field"><label for="st_qpred">Alt debit, pentru estimarea denivelării (m³/h)</label><input id="st_qpred" type="text" inputmode="decimal"></div>
+        </div>
+      </fieldset>
+      <div class="btns"><button class="btn ghost" id="stEx" type="button">Încarcă exemplul</button><button class="btn ghost" id="stClr" type="button">Golește fișa</button></div>
+    </aside>
+    <div class="card readings">
+      <div class="card-h"><div><div class="eyebrow">Fișa treptelor</div><h2>Treptele de debit</h2></div></div>
+      <div class="grid-wrap"><table class="grid"><thead><tr><th></th><th>Q<span class="u">m³/h</span></th><th id="stVh">Nivel la sfârșitul treptei<span class="u">m față de reper</span></th><th>s<span class="u">m</span></th><th>s/Q<span class="u">10⁻³ zi/m²</span></th><th>E<span class="u">randament</span></th></tr></thead><tbody id="stBody"></tbody></table></div>
+      <p class="help">Q se transformă automat în m³/zi (× 24) pentru calcul. Coloanele s, s/Q și E se completează singure.</p>
+    </div>
+  </div>
+  <div class="card results">
+    <div class="card-h"><h2>Rezultatele testului în trepte</h2></div>
+    <div class="verdict" id="stVerdict"></div>
+    <ul class="notes" id="stNotes"></ul>
+  </div>
+  <div class="charts">
+    <div class="card chart"><h3>s/Q în funcție de Q</h3><div class="legend"><span><i class="pk" style="background:#d08c2c"></i>treptele</span><span><i class="pk" style="background:#1479a3"></i>dreapta s/Q = B + C·Q</span><span><i class="pk" style="background:#0b4f6c"></i>B (intersecția cu axa)</span></div><div id="chSQ"></div></div>
+    <div class="card chart"><h3>Denivelarea în puț în funcție de debit</h3><div class="legend"><span><i class="pk" style="background:#0b4f6c"></i>s = B·Q + C·Q²</span><span><i class="pk" style="background:#2a9d8f"></i>debitul ales</span><span><i class="pk" style="background:#8a5cc2"></i>debitul de estimare</span><span><i class="pk" style="background:#c98a0c"></i>Q max</span></div><div id="chSS"></div></div>
   </div>
 </section>
 

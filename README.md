@@ -5,6 +5,8 @@ Site static pentru interpretarea testelor de pompare și generarea raportului te
 **Ce face**
 - citirile se trec direct în site, într-un tabel cu câmpuri (timp + nivel), pentru **1, 2 sau 3 puncte de măsură** (piezometre sau puțul pompat), separat pentru pompare și revenire; se poate lipi și din Excel;
 - calculează transmisivitatea T, coeficientul de înmagazinare S și permeabilitatea K = T/b pentru fiecare punct prin Cooper-Jacob (cu alegerea automată a intervalului din condiția u < 0,05), Theis (ajustare automată prin cele mai mici pătrate) și revenire (Theis-Jacob); cu două sau trei piezometre adaugă metoda distanță–denivelare (Thiem, respectiv Dupuit-Thiem la nivel liber);
+- verifică automat fiecare rezultat (u < 0,05, alinierea punctelor, revenirea la zero) și scoate din medie rezultatele care nu trec verificarea; orice rând poate fi inclus sau exclus manual;
+- fila **Test în trepte** calculează legea puțului s = B·Q + C·Q², debitul maxim pentru testul principal, randamentul puțului și denivelarea la orice debit;
 - aplică opțional corecția Jacob pentru acvifer cu nivel liber;
 - verifică automat condiția u < 0,05, consistența între metode și forma dreptei de revenire;
 - generează raportul PDF (A4) cu datele lucrării, explicarea metodelor, formulele generale și formulele aplicate cu valori, graficele și anexele cu citirile;

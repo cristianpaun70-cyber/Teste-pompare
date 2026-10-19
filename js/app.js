@@ -9,15 +9,16 @@
   const KEY = "teste-pompare-site-v2";
   const STD_T = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 75, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720, 900, 1080, 1260, 1440];
   const emptyRow = () => ({ t: "", v: ["", "", ""] });
-  const state = { n: 1, pts: [0, 1, 2].map(i => ({ name: "P" + (i + 1), r: "", ns: "", pw: false })), pump: [], rec: [], grid: "pump" };
+  const emptyStep = () => ({ mode: "h", ns: "", zp: "", rez: "1,5", pct: "70", qsel: "", qpred: "", rows: Array.from({ length: 6 }, () => ({ q: "", v: "" })) });
+  const state = { n: 1, pts: [0, 1, 2].map(i => ({ name: "P" + (i + 1), r: "", ns: "", pw: false })), pump: [], rec: [], grid: "pump", incl: {}, step: emptyStep() };
   let last = null;
 
   /* ---------- stare ---------- */
   const getSimple = () => { const v = {}; SIMPLE.forEach(k => { const e = $(k); v[k] = e.type === "checkbox" ? e.checked : e.value; }); return v; };
   const setSimple = v => SIMPLE.forEach(k => { if (!(k in v)) return; const e = $(k); if (e.type === "checkbox") e.checked = !!v[k]; else e.value = v[k]; });
-  const raw = () => Object.assign(getSimple(), { n: state.n, pts: state.pts, pump: state.pump, rec: state.rec });
+  const raw = () => Object.assign(getSimple(), { n: state.n, pts: state.pts, pump: state.pump, rec: state.rec, incl: state.incl, step: state.step });
   const meta = () => { const v = getSimple(); const m = {}; META.forEach(k => m[k] = String(v[k] || "").trim()); return m; };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ simple: getSimple(), n: state.n, pts: state.pts, pump: state.pump, rec: state.rec })); } catch (e) { } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ simple: getSimple(), n: state.n, pts: state.pts, pump: state.pump, rec: state.rec, incl: state.incl, step: state.step })); } catch (e) { } };
   let tmr; const sched = () => { clearTimeout(tmr); tmr = setTimeout(() => { render(); save(); }, 200); };
 
   /* ---------- puncte de măsură ---------- */
@@ -122,25 +123,26 @@
     const res = last = analyze(raw()), I = res.inp;
     $("corrWrap").hidden = !I.unconf;
     document.querySelectorAll('#ptsBox [data-k="ns"]').forEach(e => e.closest(".field").style.visibility = I.modeH ? "visible" : "hidden");
-    const rowsHtml = [];
+    const det = {};
     res.points.forEach(p => {
-      [["Cooper-Jacob", p.cj, m => `Δs = ${fs(m.ds)} m/ciclu · de la ${fs(m.t1)} min${m.auto ? " (automat)" : ""} · R² = ${fs(m.r2, 4)}`],
-       ["Theis", p.th, m => `ajustare pe ${m.n} citiri · eroare medie ${fs(m.rmse * 100, 2)} cm`],
-       ["Revenire", p.re, m => `Δs′ = ${fs(m.ds)} m/ciclu · t′ ≥ ${fs(m.t1)} min${m.auto ? " (automat)" : ""} · s′(t/t′=1) = ${fs(m.a, 2)} m`]].forEach(([n, m, d]) => {
-        if (!m) return;
-        rowsHtml.push(`<tr><td class="m"><i class="pk" style="background:${p.color};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px"></i>${esc(p.name)}</td><td>${n}</td><td class="n">${fs(m.T)}</td><td class="n">${fs(m.K)}</td><td class="n">${sci(m.K / 86400)}</td><td class="n">${m.S ? (p.isPW ? "(" + fS(m.S) + ")" : fS(m.S)) : "—"}</td><td class="help">${d(m)}</td></tr>`);
-      });
+      if (p.cj) det[p.idx + "|cj"] = `Δs = ${fs(p.cj.ds)} m/ciclu · de la ${fs(p.cj.t1)} min${p.cj.auto ? " (automat)" : ""} · R² = ${fs(p.cj.r2, 4)}`;
+      if (p.th) det[p.idx + "|th"] = `ajustare pe ${p.th.n} citiri · eroare medie ${fs(p.th.rmse * 100, 2)} cm`;
+      if (p.re) det[p.idx + "|re"] = `Δs′ = ${fs(p.re.ds)} m/ciclu · t′ ≥ ${fs(p.re.t1)} min${p.re.auto ? " (automat)" : ""} · s′(t/t′=1) = ${fs(p.re.a, 2)} m`;
     });
-    if (res.dist) {
-      const d = res.dist, du = I.unconf && d.dupuitK;
-      rowsHtml.push(`<tr><td class="m">${esc(d.vals.map(v => v.name).join("–"))}</td><td>${du ? "Dupuit-Thiem" : "Distanță–denivelare"}</td><td class="n">${fs(du ? d.dupuitT : d.T)}</td><td class="n">${fs(du ? d.dupuitK : d.K)}</td><td class="n">${sci((du ? d.dupuitK : d.K) / 86400)}</td><td class="n">${du ? "—" : fS(d.S)}</td><td class="help">la t = ${fs(d.tstar)} min · Δs = ${fs(d.dsR)} m/ciclu de distanță</td></tr>`);
-    }
-    $("res").innerHTML = rowsHtml.join("") || `<tr><td colspan="7" class="help">Rezultatele apar după ce introduci debitul, distanțele și citirile.</td></tr>`;
+    if (res.dist) det.dist = `la t = ${fs(res.dist.tstar)} min · Δs = ${fs(res.dist.dsR)} m/ciclu de distanță`;
+    const colOf = key => key === "dist" ? null : (res.points[+key.split("|")[0]] || {}).color;
+    const rowsHtml = res.all.map(x => {
+      const c = colOf(x.key);
+      const vk = x.valid ? `<span class="vk ok">✔ trece</span>` : `<span class="vk bad">⚠ ${esc(x.reasons.join("; "))}</span>`;
+      return `<tr class="${x.included ? "" : "off"}"><td><input type="checkbox" data-key="${x.key}" ${x.included ? "checked" : ""} aria-label="Include în medie ${esc(x.pt)} ${esc(x.method)}">${x.overridden ? ' <span class="vk man" title="Ales manual">manual</span>' : ""}</td>
+        <td class="m">${c ? `<i class="pk" style="background:${c};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px"></i>` : ""}${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${isFinite(x.S) ? fS(x.S) : "—"}</td><td>${vk}</td><td class="help">${det[x.key] || ""}</td></tr>`;
+    });
+    $("res").innerHTML = rowsHtml.join("") || `<tr><td colspan="9" class="help">Rezultatele apar după ce introduci debitul, distanțele și citirile.</td></tr>`;
     const S = res.summary;
     $("verdict").innerHTML = S ? `
       <div class="tile main"><span class="k">Permeabilitate K medie</span><span class="v">${I.b > 0 ? fs(S.Km) + " m/zi" : "—"}</span><span class="u">${I.b > 0 ? sci(S.Km / 86400) + " m/s" : "introdu grosimea b"}</span></div>
-      <div class="tile"><span class="k">Transmisivitate T</span><span class="v">${fs(S.Tm)}</span><span class="u">m²/zi · medie din ${S.n} rezultate</span></div>
-      <div class="tile"><span class="k">Înmagazinare S</span><span class="v">${fS(S.S)}</span><span class="u">${isFinite(S.S) ? "media piezometrelor" : "nedeterminat"}</span></div>
+      <div class="tile"><span class="k">Transmisivitate T</span><span class="v">${fs(S.Tm)}</span><span class="u">m²/zi · medie din ${S.n} rezultate${S.nExcl ? ` (${S.nExcl} excluse)` : ""}</span></div>
+      <div class="tile"><span class="k">Înmagazinare S</span><span class="v">${fS(S.S)}</span><span class="u">${isFinite(S.S) ? "media rezultatelor incluse" : "nedeterminat"}</span></div>
       ${S.n > 1 && I.b > 0 ? `<div class="tile"><span class="k">Interval K</span><span class="v">${fs(S.Kmin)}–${fs(S.Kmax)}</span><span class="u">m/zi</span></div>` : ""}`
       : `<div class="empty" style="grid-column:1/-1">Introdu datele ca să obții K.</div>`;
     $("notes").innerHTML = res.notes.map(([c, t]) => `<li class="${c}">${esc(t)}</li>`).join("");
@@ -169,6 +171,59 @@
       $("capDI").textContent = `Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}. Panta pe un ciclu logaritmic de distanță: Δs = ${fs(d.dsR)} m.`;
     }
   }
+
+
+  $("res").addEventListener("change", e => {
+    const cb = e.target; if (!cb.dataset || !cb.dataset.key) return;
+    const row = last && last.all.find(x => x.key === cb.dataset.key); if (!row) return;
+    if (cb.checked === row.valid) delete state.incl[cb.dataset.key]; else state.incl[cb.dataset.key] = cb.checked;
+    render(); save();
+  });
+
+  /* ---------- testul în trepte ---------- */
+  const STF = ["mode", "ns", "zp", "rez", "pct", "qsel", "qpred"];
+  function stepFill() {
+    STF.forEach(k => { $("st_" + k).value = state.step[k] ?? ""; });
+    $("stBody").innerHTML = state.step.rows.map((r, i) => `<tr><td class="no">${i + 1}</td><td><input data-i="${i}" data-k="q" inputmode="decimal" value="${esc(r.q)}" aria-label="Debit treapta ${i + 1}"></td><td><input data-i="${i}" data-k="v" inputmode="decimal" value="${esc(r.v)}" aria-label="Nivel treapta ${i + 1}"></td><td class="stc" id="sts${i}"></td><td class="stc" id="stq${i}"></td><td class="stc" id="ste${i}"></td></tr>`).join("");
+  }
+  function stepRender() {
+    $("st_nsWrap").style.visibility = state.step.mode === "s" ? "hidden" : "visible";
+    $("stVh").innerHTML = state.step.mode === "s" ? 'Denivelarea la sfârșitul treptei<span class="u">m</span>' : 'Nivel la sfârșitul treptei<span class="u">m față de reper</span>';
+    const st = window.PT.analyzeStep(state.step);
+    state.step.rows.forEach((_, i) => { ["sts", "stq", "ste"].forEach(p => $(p + i).textContent = ""); });
+    if (st) st.rows.forEach(r => { $("sts" + r.i).textContent = fs(r.s, 3); $("stq" + r.i).textContent = fs(r.sq * 1000, 4); $("ste" + r.i).textContent = isFinite(r.E) ? fs(r.E * 100, 2) + " %" : ""; });
+    const ok = st && isFinite(st.B);
+    $("stVerdict").innerHTML = ok ? `
+      <div class="tile main"><span class="k">Q max pentru testul principal</span><span class="v">${isFinite(st.Qmax) ? fs(st.Qmax / 24) + " m³/h" : "—"}</span><span class="u">${isFinite(st.Qmax) ? fs(st.Qmax, 4) + " m³/zi · " + fs(st.pct * 100) + " % din s disponibil" : "completează nivelul static și adâncimea pompei"}</span></div>
+      <div class="tile"><span class="k">B (pierderea prin strat)</span><span class="v">${sci(st.B, 3)}</span><span class="u">zi/m²</span></div>
+      <div class="tile"><span class="k">C (pierderea în puț)</span><span class="v">${st.C > 0 ? sci(st.C, 3) : "—"}</span><span class="u">zi²/m⁵</span></div>
+      <div class="tile"><span class="k">Randament la debitul ales</span><span class="v">${st.sel ? fs(st.sel.E * 100, 2) + " %" : "—"}</span><span class="u">${st.sel ? "s ≈ " + fs(st.sel.s) + " m la " + fs(st.sel.Qh) + " m³/h" : "completează debitul ales"}</span></div>
+      ${isFinite(st.sdisp) ? `<div class="tile"><span class="k">Denivelare disponibilă</span><span class="v">${fs(st.sdisp)} m</span><span class="u">limită de lucru ${fs(st.slim)} m</span></div>` : ""}
+      ${st.pred ? `<div class="tile"><span class="k">Estimare la ${fs(st.pred.Qh)} m³/h</span><span class="v">${fs(st.pred.s)} m</span><span class="u">denivelarea în puț</span></div>` : ""}`
+      : `<div class="empty" style="grid-column:1/-1">Rezultatele apar după ce completezi cel puțin două trepte.</div>`;
+    $("stNotes").innerHTML = (st ? st.notes : []).map(([c, t]) => `<li class="${c}">${esc(t)}</li>`).join("");
+    if ($("tab-step").hidden) return;
+    chartInto("chSQ", ok ? C.specStepSQ(st) : null, "Graficul apare după ce completezi cel puțin două trepte.");
+    chartInto("chSS", ok ? C.specStepS(st) : null, "Graficul apare după ce completezi cel puțin două trepte.");
+  }
+  let stT; const stSched = () => { clearTimeout(stT); stT = setTimeout(() => { stepRender(); save(); }, 200); };
+  STF.forEach(k => { const e = $("st_" + k); const h = () => { state.step[k] = e.value; stSched(); }; e.addEventListener("input", h); e.addEventListener("change", h); });
+  $("stBody").addEventListener("input", e => { const inp = e.target; if (inp.dataset.i == null) return; state.step.rows[+inp.dataset.i][inp.dataset.k] = inp.value; stSched(); });
+  $("stBody").addEventListener("paste", e => {
+    const inp = e.target; if (inp.dataset.i == null) return;
+    const txt = (e.clipboardData || window.clipboardData).getData("text"); if (!/[\t\n]/.test(txt)) return;
+    e.preventDefault();
+    const lines = txt.replace(/\r/g, "").split("\n").filter(l => l.trim() !== ""), i0 = +inp.dataset.i, k0 = inp.dataset.k;
+    lines.forEach((l, j) => { const r = state.step.rows[i0 + j]; if (!r) return; const parts = l.split(/\t|;/); if (k0 === "q") { r.q = (parts[0] || "").trim(); if (parts[1] != null) r.v = parts[1].trim(); } else r.v = (parts[0] || "").trim(); });
+    stepFill(); stepRender(); save();
+  });
+  function stepExample() {
+    const c = x => String(x).replace(".", ",");
+    state.step = Object.assign(emptyStep(), { mode: "h", ns: "3,40", zp: "10,5", rez: "1,5", pct: "70", qsel: "50", qpred: "60" });
+    [15, 30, 45, 60].forEach((q, i) => { const Q = q * 24; state.step.rows[i] = { q: String(q), v: c((3.40 + 1.6e-3 * Q + 3e-7 * Q * Q).toFixed(2)) }; });
+  }
+  $("stEx").addEventListener("click", () => { stepExample(); stepFill(); stepRender(); save(); });
+  $("stClr").addEventListener("click", () => { state.step = emptyStep(); stepFill(); stepRender(); save(); });
 
   /* ---------- raport ---------- */
   async function preview() {
@@ -200,7 +255,7 @@
     const P = [{ name: "PZ1", r: 12, ns: 3.40 }, { name: "PZ2", r: 35, ns: 3.38 }, { name: "PZ3", r: 80, ns: 3.42 }];
     let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 - 0.5; };
     const c = x => String(x).replace(".", ",");
-    state.n = 3;
+    state.n = 3; state.incl = {};
     state.pts = P.map(p => ({ name: p.name, r: String(p.r), ns: c(p.ns.toFixed(2)), pw: false }));
     state.pump = STD_T.map(t => ({ t: c(t), v: P.map(p => c((p.ns + theisS(Qm, T, S, p.r, t / 1440) + rnd() * 0.01).toFixed(2))) }));
     const tr = [0.5, 1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720];
@@ -214,13 +269,15 @@
 
   /* ---------- file și evenimente ---------- */
   function showTab(name) {
-    ["calc", "rep", "proc"].forEach(t => { $("tab-" + t).hidden = t !== name; $("tb-" + t).setAttribute("aria-selected", t === name); });
+    ["calc", "step", "rep", "proc"].forEach(t => { $("tab-" + t).hidden = t !== name; $("tb-" + t).setAttribute("aria-selected", t === name); });
     if (name === "calc") render();
+    if (name === "step") stepRender();
     if (name === "rep") { last = analyze(raw()); preview(); }
-    try { history.replaceState(null, "", "#" + (name === "calc" ? "calcul" : name === "rep" ? "raport" : "procedura")); } catch (e) { }
+    try { history.replaceState(null, "", "#" + ({ calc: "calcul", step: "trepte", rep: "raport", proc: "procedura" })[name]); } catch (e) { }
   }
   $("tb-calc").addEventListener("click", () => showTab("calc"));
   $("tb-rep").addEventListener("click", () => showTab("rep"));
+  $("tb-step").addEventListener("click", () => showTab("step"));
   $("tb-proc").addEventListener("click", () => showTab("proc"));
   SIMPLE.forEach(k => { $(k).addEventListener("input", sched); $(k).addEventListener("change", sched); });
   $("mode").addEventListener("change", () => { renderGridHead(); renderPts(); });
@@ -229,16 +286,16 @@
   $("btnPdf").addEventListener("click", downloadPDF);
   $("btnPdf2").addEventListener("click", downloadPDF);
   $("btnPrint").addEventListener("click", printReport);
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("tab-calc").hidden && last) drawCharts(last); }, 150); });
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("tab-calc").hidden && last) drawCharts(last); if (!$("tab-step").hidden) stepRender(); }, 150); });
 
   let loaded = false;
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s && s.simple) { setSimple(s.simple); state.n = s.n || 1; if (s.pts) s.pts.forEach((p, i) => state.pts[i] = Object.assign(state.pts[i], p)); state.pump = s.pump || []; state.rec = s.rec || []; loaded = true; $("exNote").hidden = true; }
+    if (s && s.simple) { setSimple(s.simple); state.n = s.n || 1; if (s.pts) s.pts.forEach((p, i) => state.pts[i] = Object.assign(state.pts[i], p)); state.pump = s.pump || []; state.rec = s.rec || []; state.incl = s.incl || {}; if (s.step) state.step = Object.assign(emptyStep(), s.step); loaded = true; $("exNote").hidden = true; }
   } catch (e) { }
-  if (!loaded) example();
-  renderPts(); renderGrid();
+  if (!loaded) { example(); stepExample(); }
+  renderPts(); renderGrid(); stepFill();
   const h = location.hash.replace("#", "");
-  showTab(h === "raport" ? "rep" : h === "procedura" ? "proc" : "calc");
+  showTab(h === "raport" ? "rep" : h === "procedura" ? "proc" : h === "trepte" ? "step" : "calc");
   window.PTApp = { render, getLast: () => last, meta, state };
 })();

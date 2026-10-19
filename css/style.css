@@ -189,3 +189,12 @@ table.grid button.x:hover { color: var(--coral); background: #fdf0ee; }
   table.grid th .u { font-size: .66rem; }
   table.grid td.no { width: 24px; padding-right: 4px; }
 }
+/* rezultate incluse / excluse, verificare */
+#res input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; }
+#res tr.off td { color: #9aaab3; background: #f6f8f9; }
+#res tr.off td.m, #res tr.off td.n { text-decoration: line-through; text-decoration-color: rgba(154, 170, 179, .7); }
+.vk { display: inline-block; font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.vk.ok { background: var(--tealS, #dff2ef); color: #1d5f56; }
+.vk.bad { background: #fdf0d8; color: #7a5208; white-space: normal; }
+.vk.man { background: var(--foam); color: var(--deep); }
+#stBody td.stc { font-family: var(--f-mono); font-size: .84rem; color: var(--deep); padding: 5px 8px; white-space: nowrap; }
