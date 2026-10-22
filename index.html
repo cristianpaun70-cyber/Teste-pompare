@@ -99,8 +99,11 @@
         </div>
         <input id="rr1" type="hidden">
         <div id="tstarWrap">
-          <div class="mini">Distanță–denivelare / Thiem</div>
-          <div class="field"><label for="tstar">Momentul comparației (min)</label><input id="tstar" type="text" inputmode="decimal" placeholder="ultimul timp comun"></div>
+          <div class="mini">Comparația între piezometre</div>
+          <div class="row">
+            <div class="field"><label for="tstar">Momentul comparației (min)</label><input id="tstar" type="text" inputmode="decimal" placeholder="ultimul timp comun"></div>
+            <div class="field"><label for="dmode">Regimul la acel moment</label><select id="dmode"><option value="auto">automat</option><option value="trans">nepermanent → distanță–denivelare (T și S)</option><option value="steady">stabilizat → Thiem (doar T)</option></select></div>
+          </div>
         </div>
         <span class="help">Câmpurile goale folosesc alegerea automată: pentru fiecare piezometru, dreapta Cooper-Jacob și cea de revenire folosesc doar citirile pentru care u = r²S/(4Tt) &lt; 0,05.</span>
       </fieldset>
@@ -141,7 +144,11 @@
       <thead><tr><th title="Bifat = rezultatul intră în medie">În medie</th><th>Punct</th><th>Metodă</th><th>T (m²/zi)</th><th>K (m/zi)</th><th>K (m/s)</th><th>S</th><th>Verificare</th><th>Detalii</th></tr></thead>
       <tbody id="res"></tbody>
     </table></div>
-    <p class="help">Rezultatele care nu trec verificările sunt scoase automat din medie. Poți include sau exclude manual orice rând din căsuța „În medie”.</p>
+    <p class="help">Rezultatele care nu trec verificările automate sunt scoase din medie. Verificările sunt o condiție necesară, nu o dovadă că modelul e potrivit: privește și graficele. Poți include sau exclude manual orice rând din căsuța „În medie”. Media se face întâi pe fiecare punct, apoi între puncte, ca fiecare punct să aibă aceeași pondere.</p>
+    <div class="adopt">
+      <div class="field"><label for="kad">K adoptat pentru proiectare (m/zi)</label><input id="kad" type="text" inputmode="decimal" placeholder="valoarea aleasă de inginer"></div>
+      <div class="field"><label for="kjust">Justificarea alegerii (apare în raport)</label><textarea id="kjust" rows="2" placeholder="ex. media pe puncte; rezultatele PZ3 excluse din cauza limitei de alimentare; verificat cu granulometria (pietriș cu nisip)"></textarea></div>
+    </div>
     <ul class="notes" id="notes"></ul>
   </div>
 
@@ -165,7 +172,7 @@
       <p class="cap" id="capRE"></p>
     </div>
     <div class="card chart wide" id="distCard">
-      <h3>Distanță–denivelare (Thiem) · s – lg r</h3>
+      <h3 id="distTitle">Comparația între piezometre · s – lg r</h3>
       <div class="legend" id="legDI"></div>
       <div id="chDI"></div>
       <p class="cap" id="capDI"></p>
@@ -178,7 +185,7 @@
   <div class="card" style="margin-top:0">
     <div class="eyebrow">Etapa B din ghid</div>
     <h2>Testul în trepte</h2>
-    <p class="help" style="font-size:.92rem;max-width:80ch">Treci pentru fiecare treaptă debitul și nivelul din puț de la sfârșitul treptei. Fișa calculează legea puțului s = B·Q + C·Q², debitul maxim pe care îl poți folosi la testul principal și randamentul puțului. Treptele trebuie să aibă aceeași durată.</p>
+    <p class="help" style="font-size:.92rem;max-width:80ch">Treci pentru fiecare treaptă debitul și nivelul din puț de la sfârșitul treptei. Fișa calculează legea puțului s = B·Q + C·Q², un debit orientativ pentru testul principal și randamentul aparent al puțului. Treptele trebuie să aibă aceeași durată. Debitul orientativ se verifică în primele ore ale testului principal, urmărind nivelul din puț.</p>
   </div>
   <div class="layout">
     <aside class="inputs">
@@ -197,6 +204,12 @@
       </fieldset>
       <fieldset>
         <legend>Debite de verificat</legend>
+        <div class="row">
+          <div class="field"><label for="st_tstep">Durata unei trepte (min)</label><input id="st_tstep" type="text" inputmode="decimal" placeholder="ex. 120"></div>
+          <div class="field"><label for="st_tmain">Durata testului principal (min)</label><input id="st_tmain" type="text" inputmode="decimal" placeholder="1440"></div>
+        </div>
+        <div class="field"><label for="st_tcorr">T pentru corecția duratei (m²/zi)</label><input id="st_tcorr" type="text" inputmode="decimal" placeholder="din fila Calcul"></div>
+        <span class="help">Denivelarea din strat crește în timp. B se corectează pentru durata testului principal cu ΔB = 0,183/T · lg(t principal / t treaptă). Dacă lași T gol, se ia media din fila Calcul; înainte de testul principal treci T estimat.</span>
         <div class="row">
           <div class="field"><label for="st_qsel">Debitul ales pentru testul principal (m³/h)</label><input id="st_qsel" type="text" inputmode="decimal"></div>
           <div class="field"><label for="st_qpred">Alt debit, pentru estimarea denivelării (m³/h)</label><input id="st_qpred" type="text" inputmode="decimal"></div>
@@ -217,7 +230,7 @@
   </div>
   <div class="charts">
     <div class="card chart"><h3>s/Q în funcție de Q</h3><div class="legend"><span><i class="pk" style="background:#d08c2c"></i>treptele</span><span><i class="pk" style="background:#1479a3"></i>dreapta s/Q = B + C·Q</span><span><i class="pk" style="background:#0b4f6c"></i>B (intersecția cu axa)</span></div><div id="chSQ"></div></div>
-    <div class="card chart"><h3>Denivelarea în puț în funcție de debit</h3><div class="legend"><span><i class="pk" style="background:#0b4f6c"></i>s = B·Q + C·Q²</span><span><i class="pk" style="background:#2a9d8f"></i>debitul ales</span><span><i class="pk" style="background:#8a5cc2"></i>debitul de estimare</span><span><i class="pk" style="background:#c98a0c"></i>Q max</span></div><div id="chSS"></div></div>
+    <div class="card chart"><h3>Denivelarea în puț în funcție de debit</h3><div class="legend"><span><i class="pk" style="background:#0b4f6c"></i>s = B·Q + C·Q²</span><span><i class="pk" style="background:#2a9d8f"></i>debitul ales</span><span><i class="pk" style="background:#8a5cc2"></i>debitul de estimare</span><span><i class="pk" style="background:#c98a0c"></i>Q orientativ</span><span>linie întreruptă = fără corecția duratei</span></div><div id="chSS"></div></div>
   </div>
 </section>
 

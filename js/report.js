@@ -69,18 +69,27 @@
 
     // rezultate
     if (S) {
+      const ad = isFinite(S.Kad);
+      const order = []; res.all.forEach(x => { if (!order.includes(x.group)) order.push(x.group); });
+      const rowsH = order.map(gid => {
+        const rows = res.all.filter(x => x.group === gid), g = S.groups.find(q => q.id === gid);
+        return rows.map(x => `<tr${x.included ? "" : ' style="color:#9aaab3"'}><td class="m"${x.included ? "" : ' style="color:#9aaab3"'}>${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${sS(x.S)}</td><td>${x.included ? "da" : "<b style='color:#a06a05'>nu</b>"}</td></tr>`).join("")
+          + `<tr style="background:#e4f2f8"><td colspan="2" style="font-weight:600;color:#0b4f6c">Media ${gid === "m" ? "între piezometre" : "pentru " + esc(rows[0].pt)}</td><td class="n">${g ? fs(g.Tm) : "—"}</td><td class="n">${g ? fs(g.Km) : "—"}</td><td class="n">${g ? sci(g.Km / 86400) : ""}</td><td class="n">${g ? sS(g.S) : ""}</td><td></td></tr>`;
+      }).join("");
       B.push(el(h2(++no, "Rezultate") + `
         <div class="tiles">
-          <div class="tile main"><span class="k">Permeabilitate K (medie)</span><span class="v">${b > 0 ? fs(S.Km) + " m/zi" : "—"}</span><span class="u">${b > 0 ? sci(S.Km / 86400) + " m/s" : "necesită b"}</span></div>
-          <div class="tile"><span class="k">Transmisivitate T</span><span class="v">${fs(S.Tm)}</span><span class="u">m²/zi</span></div>
-          <div class="tile s"><span class="k">Înmagazinare S</span><span class="v">${sS(S.S)}</span><span class="u">${isFinite(S.S) ? "media piezometrelor" : "nedeterminat"}</span></div>
-          <div class="tile t"><span class="k">Interval K</span><span class="v">${b > 0 && S.n > 1 ? fs(S.Kmin) + "–" + fs(S.Kmax) : "—"}</span><span class="u">${S.n} rezultate · m/zi</span></div>
+          <div class="tile main"><span class="k">${ad ? "K adoptat pentru proiectare" : "K adoptat — necompletat"}</span><span class="v">${ad ? fs(S.Kad) + " m/zi" : "—"}</span><span class="u">${ad ? sci(S.Kad / 86400) + " m/s" : "valoarea se stabilește de inginer"}</span></div>
+          <div class="tile"><span class="k">K orientativ (media pe puncte)</span><span class="v">${b > 0 ? fs(S.Km) : "—"}</span><span class="u">m/zi · ${b > 0 ? sci(S.Km / 86400) + " m/s" : ""}</span></div>
+          <div class="tile t"><span class="k">Interval K</span><span class="v">${b > 0 && S.n > 1 ? fs(S.Kmin) + "–" + fs(S.Kmax) : "—"}</span><span class="u">${S.n} rezultate incluse · m/zi</span></div>
+          <div class="tile s"><span class="k">Înmagazinare S</span><span class="v">${sS(S.S)}</span><span class="u">${isFinite(S.S) ? "media pe puncte" : "nedeterminat"}</span></div>
         </div>
+        ${ad ? `<div class="rnotes" style="margin-bottom:3mm"><div class="info"><b>Justificarea valorii adoptate:</b> ${S.just ? esc(S.just) : "<i>necompletată</i>"}</div></div>` : ""}
         <table><thead><tr><th>Punct</th><th>Metodă</th><th class="n">T (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th><th class="n">S</th><th>În medie</th></tr></thead><tbody>
-        ${res.all.map(x => `<tr${x.included ? "" : ' style="color:#9aaab3"'}><td class="m"${x.included ? "" : ' style="color:#9aaab3"'}>${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${sS(x.S)}</td><td>${x.included ? "da" : "<b style='color:#a06a05'>nu</b>"}</td></tr>`).join("")}
-        <tr class="mean"><td colspan="2">Medie (${S.n} rezultate incluse)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td><td class="n">${sS(S.S)}</td><td></td></tr>
+        ${rowsH}
+        <tr class="mean"><td colspan="2">Media pe puncte (${S.groups.length} ${S.groups.length === 1 ? "grup" : "grupuri"}, pondere egală)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td><td class="n">${sS(S.S)}</td><td></td></tr>
         </tbody></table>
-        ${S.nExcl ? `<p style="font-size:8.8pt;color:#587080;margin-top:2mm">Rezultate excluse din medie: ${res.all.filter(x => !x.included).map(x => `${esc(x.pt)} ${x.method} — ${x.overridden ? "exclus de inginer" : esc(x.reasons.join("; "))}`).join("; ")}.</p>` : ""}`));
+        ${S.nExcl ? `<p style="font-size:8.8pt;color:#587080;margin-top:2mm">Rezultate excluse din medie: ${res.all.filter(x => !x.included).map(x => `${esc(x.pt)} ${x.method} — ${x.overridden ? "exclus de inginer" : esc(x.reasons.join("; "))}`).join("; ")}.</p>` : ""}
+        <p style="font-size:8.8pt;color:#587080;margin-top:1mm">Media se face întâi pe fiecare punct de măsură, apoi între puncte, ca fiecare punct să aibă aceeași pondere. Verificările automate sunt o condiție necesară, nu o dovadă că modelul ales este potrivit.</p>`));
     }
     if (res.notes.length) B.push(el(`<div class="h3">Observații de verificare</div><div class="rnotes">${res.notes.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join("")}</div>`));
     B.push(el(`<div class="h3">Ipotezele metodelor de interpretare</div><ul class="hyp">
@@ -93,22 +102,23 @@
     // testul în trepte
     const st = res.step;
     if (st && isFinite(st.B) && st.rows.length >= 2) {
-      B.push(el(h2(++no, "Testul în trepte (randamentul puțului)") + `
-        <p>Denivelarea din puțul pompat are două componente: coborârea nivelului în strat, proporțională cu debitul (B·Q), și pierderea de sarcină la intrarea apei prin pietrișul de filtru și filtru, care crește cu pătratul debitului (C·Q²). Împărțind la Q se obține o dreaptă s/Q = B + C·Q: intersecția cu axa dă B, panta dă C. Cu legea puțului se alege debitul testului principal și se estimează denivelarea din puț la orice debit. Testul în trepte nu se folosește pentru K de proiectare.</p>
+      B.push(el(h2(++no, "Testul în trepte (legea puțului)") + `
+        <p>Denivelarea din puțul pompat are două componente: pierderile liniare (B·Q), adică coborârea nivelului în strat plus pierderile liniare din zona filtrului, și pierderile neliniare din puț (C·Q²), la intrarea apei prin pietrișul de filtru și filtru, care cresc cu pătratul debitului. Împărțind la Q se obține o dreaptă s/Q = B + C·Q: intersecția cu axa dă B, panta dă C. Raportul E = B·Q/s este un randament <i>aparent</i>: B include și pierderi liniare din puț, deci randamentul real este cel mult E. Testul în trepte nu se folosește pentru K de proiectare.</p>
         <div class="eqs">
           ${eq(`${v("s")} = ${v("B")}·${v("Q")} + ${v("C")}·${v("Q")}²&nbsp;&nbsp;&nbsp;&nbsp; ${fr(v("s"), v("Q"))} = ${v("B")} + ${v("C")}·${v("Q")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("E")} = ${fr(v("B") + "·" + v("Q"), v("B") + "·" + v("Q") + " + " + v("C") + "·" + v("Q") + "²")}`, "legea puțului")}
-          ${eq(`${v("s")}<sub>disp</sub> = ${v("z")}<sub>pompă</sub> − ${v("NS")} − rezervă&nbsp;&nbsp;&nbsp;&nbsp; ${v("Q")}<sub>max</sub> = ${fr("−" + v("B") + " + √(" + v("B") + "² + 4·" + v("C") + "·" + v("s") + "<sub>lim</sub>)", "2·" + v("C"))}`, "debitul maxim")}
+          ${eq(`${v("B")}<sub>t</sub> = ${v("B")} + ${fr("0,183", v("T"))}·lg ${fr(v("t") + "<sub>principal</sub>", v("t") + "<sub>treaptă</sub>")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("Q")}<sub>or</sub> = ${fr("−" + v("B") + "<sub>t</sub> + √(" + v("B") + "<sub>t</sub>² + 4·" + v("C") + "·" + v("s") + "<sub>lim</sub>)", "2·" + v("C"))}`, "debitul orientativ")}
         </div>`));
-      B.push(el(`<table><thead><tr><th>Treapta</th><th class="n">Q (m³/h)</th><th class="n">Q (m³/zi)</th><th class="n">s (m)</th><th class="n">s/Q (zi/m²)</th><th class="n">E</th></tr></thead><tbody>
+      B.push(el(`<table><thead><tr><th>Treapta</th><th class="n">Q (m³/h)</th><th class="n">Q (m³/zi)</th><th class="n">s (m)</th><th class="n">s/Q (zi/m²)</th><th class="n">E aparent</th></tr></thead><tbody>
         ${st.rows.map((r, k) => `<tr><td class="m">${k + 1}</td><td class="n">${fs(r.Qh, 4)}</td><td class="n">${fs(r.Qd, 5)}</td><td class="n">${fd(r.s, 3)}</td><td class="n">${sci(r.sq, 3)}</td><td class="n">${isFinite(r.E) ? fs(r.E * 100, 2) + " %" : "—"}</td></tr>`).join("")}
         </tbody></table>`));
-      B.push(el(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm">${fig(C.specStepSQ(st), "", "s/Q în funcție de Q; intersecția cu axa dă B.", 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}${fig(C.specStepS(st), "", "Legea puțului, denivelarea disponibilă (roșu), limita de lucru și Q max (galben), debitul ales (verde).", 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}</div>`));
+      B.push(el(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm">${fig(C.specStepSQ(st), "", "s/Q în funcție de Q; intersecția cu axa dă B, panta dă C.", 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}${fig(C.specStepS(st), "", `Legea puțului${st.corrected ? ` pentru ${fs(st.tmain)} min (linie plină) și pentru durata treptelor (întreruptă)` : ""}, denivelarea disponibilă (roșu), limita de lucru și Q orientativ (galben), debitul ales (verde).`, 420, 300).replace('class="fig"', 'class="fig" style="padding:1.5mm 2mm"')}</div>`));
       const sel = st.sel;
       B.push(el(`<div class="calc">
-        ${cl("Dreapta s/Q – Q", `${v("B")} = ${R(sci(st.B, 3) + " zi/m²")}&nbsp; ${v("C")} = ${R(st.C > 0 ? sci(st.C, 3) + " zi²/m⁵" : "nedeterminat")}${st.rows.length > 2 ? `&nbsp; (R² = ${fs(st.r2, 4)})` : ""}`)}
+        ${cl("Dreapta s/Q – Q", st.invalid ? `panta C = ${sci(Math.abs(st.C), 3)} este ${st.C < 0 ? "negativă" : "zero"} <span class="warn">— test neinterpretabil; ajustare cu C = 0: B = ${sci(st.B, 3)} zi/m²</span>` : `${v("B")} = ${R(sci(st.B, 3) + " zi/m²")}&nbsp; ${v("C")} = ${R(sci(st.C, 3) + " zi²/m⁵")}${st.rows.length > 2 ? `&nbsp; (R² = ${fs(st.r2, 4)})` : ""}`)}
+        ${st.corrected ? cl("Corecția duratei", `${v("B")}<sub>t</sub> = ${sci(st.B, 3)} + ${fr("0,183", fs(st.Tc))}·lg ${fr(fs(st.tmain), fs(st.tstep))} = ${R(sci(st.Bm, 3) + " zi/m²")}&nbsp; (T ${st.Tsrc})`) : cl("Corecția duratei", `<span class="warn">neaplicată — lipsesc durata treptei sau T; debitul orientativ este supraestimat</span>`)}
         ${isFinite(st.sdisp) ? cl("Denivelarea disponibilă", `${v("s")}<sub>disp</sub> = ${fs(st.zp, 4)} − ${fs(st.NS, 4)} − ${fs(st.rez, 3)} = ${R(fd(st.sdisp, 2) + " m")};&nbsp; ${v("s")}<sub>lim</sub> = ${fs(st.pct * 100)} % × ${fd(st.sdisp, 2)} = ${fd(st.slim, 2)} m`) : ""}
-        ${isFinite(st.Qmax) ? cl("Debitul maxim", `${v("Q")}<sub>max</sub> = ${R(fs(st.Qmax, 4) + " m³/zi")} = ${fs(st.Qmax / 24)} m³/h`) : ""}
-        ${sel ? cl("La debitul ales", `${v("Q")} = ${fs(sel.Qh)} m³/h = ${fs(sel.Qd, 5)} m³/zi;&nbsp; ${v("s")} = ${fd(st.B * sel.Qd, 2)} + ${fd(st.Ceff * sel.Qd * sel.Qd, 2)} = ${R(fd(sel.s, 2) + " m")};&nbsp; ${v("E")} = ${R(fs(sel.E * 100, 2) + " %")}`) : ""}
+        ${isFinite(st.Qor) ? cl("Debitul orientativ", `${v("Q")}<sub>or</sub> = ${R(fs(st.Qor, 4) + " m³/zi")} = ${fs(st.Qor / 24)} m³/h${st.corrected ? ` (fără corecție: ${fs(st.Qor0 / 24)} m³/h)` : ""}`) : ""}
+        ${sel ? cl("La debitul ales", `${v("Q")} = ${fs(sel.Qh)} m³/h = ${fs(sel.Qd, 5)} m³/zi;&nbsp; ${v("s")} = ${R(fd(sel.s, 2) + " m")}${st.corrected ? ` după ${fs(st.tmain)} min` : ""}${isFinite(sel.E) ? `;&nbsp; ${v("E")} aparent = ${R(fs(sel.E * 100, 2) + " %")}` : ""}`) : ""}
         ${st.pred ? cl("Estimare", `la ${v("Q")} = ${fs(st.pred.Qh)} m³/h denivelarea în puț este ${R(fd(st.pred.s, 2) + " m")}`) : ""}
       </div>${st.notes.length ? `<div class="rnotes" style="margin-top:3mm">${st.notes.map(([c, t]) => `<div class="${c}">${esc(t)}</div>`).join("")}</div>` : ""}`));
     }
@@ -127,7 +137,7 @@
       P.filter(p => p.cj).forEach(p => {
         const c = p.cj, t0d = c.t0 / 1440, t1d = c.t1 / 1440, r = p.r;
         B.push(el(ptTitle(p) + `<div class="calc">
-          ${cl("Interval folosit", `${c.n} citiri, între ${fs(c.t1)} și ${fs(c.t2)} min${c.auto ? " (început ales automat din condiția u &lt; 0,05)" : ""}; R² = ${fs(c.r2, 4)}`)}
+          ${cl("Interval folosit", `${c.n} citiri, între ${fs(c.t1)} și ${fs(c.t2)} min${c.auto ? (p.isPW ? (c.startBasis === "rc" ? ` (început din efectul volumului de apă din puț: t &gt; 25·rc²/T = ${fs(c.tws, 2)} min, rc = ${fs(p.rc)} m)` : " (început implicit la 10 min; raza coloanei necompletată)") : " (început ales automat din condiția u &lt; 0,05)") : ""}; R² = ${fs(c.r2, 4)}`)}
           ${cl("Panta dreptei", `Δ${v("s")} = ${sym}(10·${v("t")}) − ${sym}(${v("t")}) = ${R(fd(c.ds, 3) + " m / ciclu log")}`)}
           ${cl("Transmisivitatea", `${v("T")} = ${fr("0,183 · " + v("Q"), "Δ" + v("s"))} = ${fr("0,183 × " + n4(Q), fd(c.ds, 3))} = ${R(fs(c.T) + " m²/zi")}`)}
           ${!p.isPW && isFinite(c.S) ? cl("Înmagazinarea", `${v("t")}₀ = ${fs(c.t0)} min = ${sci(t0d, 3)} zile;&nbsp; ${v("S")} = ${fr("2,25 × " + fs(c.T) + " × " + sci(t0d, 3), fs(r, 4) + "²")} = ${R(sS(c.S))}`) : ""}
@@ -170,6 +180,7 @@
         const e = p.re;
         B.push(el(ptTitle(p) + `<div class="calc">
           ${cl("Interval folosit", `${e.n} citiri cu t′ ≥ ${fs(e.t1)} min (t/t′ ≤ ${fs(e.xmax, 3)})${e.auto ? ", ales automat din condiția u′ &lt; 0,05" : ""}; R² = ${fs(e.r2, 4)}`)}
+          ${isFinite(e.uRe) ? cl("Verificarea u′", `${v("u")}′ = r²S/(4T·t′) = ${fs(e.uRe, 2)} la t′ = ${fs(e.t1)} min ${e.uRe < 0.05 ? `<span class="ok">&lt; 0,05 — condiție îndeplinită</span>` : `<span class="warn">&gt; 0,05 — lipsesc citirile târzii</span>`}`) : ""}
           ${cl("Panta dreptei", `Δ${v("s")}′ = ${R(fd(e.ds, 3) + " m / ciclu log")}`)}
           ${cl("Transmisivitatea", `${v("T")} = ${fr("0,183 × " + n4(Q), fd(e.ds, 3))} = ${R(fs(e.T) + " m²/zi")}`)}
           ${cl("Control la t/t′ = 1", `${v("s")}′ = ${fd(e.a, 3)} m ${Math.abs(e.a) <= 0.05 * p.smax ? `<span class="ok">practic zero — fără limite sau alimentare evidente</span>` : `<span class="warn">diferit de zero — vezi observațiile</span>`}`)}
@@ -178,27 +189,27 @@
       });
     }
 
-    // distanță – denivelare / Thiem
+    // comparația între piezometre
     const d = res.dist;
     if (d) {
-      const du = I.unconf && d.dupuitK;
-      B.push(el(h2(++no, "Metoda distanță–denivelare (Thiem)") + `
-        <p>Când există cel puțin două piezometre, denivelările citite în același moment se așază pe o dreaptă în funcție de logaritmul distanței până la puț. Panta pe un ciclu logaritmic al distanței (Δs) dă transmisivitatea, iar distanța r₀ la care dreapta taie s = 0 dă coeficientul de înmagazinare. Pentru două piezometre, relația este identică cu formula Thiem; ea este valabilă în regim stabilizat sau când u &lt; 0,05 în toate piezometrele${I.unconf ? ". La nivel liber se aplică forma Dupuit-Thiem, cu grosimile saturate h = b − s" : ""}.</p>
-        <div class="eqs">
-          ${eq(`${v("T")} = ${fr("0,366 · " + v("Q"), "Δ" + v("s") + "<sub>r</sub>")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("S")} = ${fr("2,25 · " + v("T") + " · " + v("t"), v("r") + "₀²")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("T")} = ${fr(v("Q") + " · ln(" + v("r") + "₂ / " + v("r") + "₁)", "2π · (" + v("s") + "₁ − " + v("s") + "₂)")}`, "Thiem")}
-          ${du ? eq(`${v("K")} = ${fr(v("Q") + " · ln(" + v("r") + "₂ / " + v("r") + "₁)", "π · (" + v("h") + "₂² − " + v("h") + "₁²)")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("h")} = ${v("b")} − ${v("s")}`, "Dupuit-Thiem") : ""}
-        </div>`));
-      B.push(el(fig(C.specDist(res), d.vals.map(x => `<span>${dot(x.color)}${esc(x.name)}</span>`).join("") + `<span>${dot("#0b4f6c")}r₀</span>`, `Figura ${no}.1 — Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}, în funcție de logaritmul distanței.`)));
+      const du = I.unconf && d.dupuitK, tr = d.regime === "trans";
+      B.push(el(h2(++no, tr ? "Metoda distanță–denivelare (Cooper-Jacob)" : (du ? "Metoda Dupuit-Thiem (regim stabilizat)" : "Metoda Thiem (regim stabilizat)")) + (tr ? `
+        <p>Denivelările citite în același moment în mai multe piezometre se așază pe o dreaptă în funcție de logaritmul distanței până la puț, cât timp u &lt; 0,05 în toate piezometrele (regim nepermanent). Panta pe un ciclu logaritmic al distanței (Δs<sub>r</sub>) dă transmisivitatea, iar distanța r₀ la care dreapta taie s = 0 dă coeficientul de înmagazinare.</p>
+        <div class="eqs">${eq(`${v("T")} = ${fr("0,366 · " + v("Q"), "Δ" + v("s") + "<sub>r</sub>")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("S")} = ${fr("2,25 · " + v("T") + " · " + v("t"), v("r") + "₀²")}`, "Cooper-Jacob, distanță–denivelare")}</div>` : `
+        <p>În regim stabilizat, denivelările din piezometre nu mai cresc, iar diferența de nivel dintre ele rămâne constantă. Același debit trece prin orice cilindru din jurul puțului, ceea ce conduce la formula Thiem${du ? " (la nivel liber, forma Dupuit-Thiem, cu grosimile saturate h = b − s)" : ""}. Din regimul stabilizat se obține doar transmisivitatea (sau K); coeficientul de înmagazinare S nu se poate determina.</p>
+        <div class="eqs">${eq(`${v("T")} = ${fr(v("Q") + " · ln(" + v("r") + "₂ / " + v("r") + "₁)", "2π · (" + v("s") + "₁ − " + v("s") + "₂)")} = ${fr("0,366 · " + v("Q"), "Δ" + v("s") + "<sub>r</sub>")}`, "Thiem")}${du ? eq(`${v("K")} = ${fr(v("Q") + " · ln(" + v("r") + "₂ / " + v("r") + "₁)", "π · (" + v("h") + "₂² − " + v("h") + "₁²)")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("h")} = ${v("b")} − ${v("s")}`, "Dupuit-Thiem") : ""}</div>`)
+        + `<p style="font-size:9pt;color:#587080">Regimul la t = ${fs(d.tstar)} min: <b>${tr ? "nepermanent" : "stabilizat"}</b>${d.dmode === "auto" ? `, stabilit automat (în ultimul ciclu de timp denivelarea a crescut cu ${fs(d.ratio * 100, 2)} % din panta Cooper-Jacob; prag pentru regim stabilizat: 25 %)` : ", ales de inginer"}.</p>`));
+      B.push(el(fig(C.specDist(res), d.vals.map(x => `<span>${dot(x.color)}${esc(x.name)}</span>`).join("") + (tr ? `<span>${dot("#0b4f6c")}r₀</span>` : ""), `Figura ${no}.1 — Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}, în funcție de logaritmul distanței.`)));
       const tst = d.tstar / 1440;
-      B.push(el(`<div class="h3">Calculul aplicat</div><table><thead><tr><th>Piezometru</th><th class="n">r (m)</th><th class="n">${sym} la t = ${fs(d.tstar)} min (m)</th>${du ? '<th class="n">h = b − s (m)</th>' : ""}</tr></thead><tbody>
-        ${d.vals.map(x => `<tr><td class="m">${dot(x.color)}${esc(x.name)}</td><td class="n">${fs(x.r, 4)}</td><td class="n">${fd(x.s, 3)}${x.interp ? " *" : ""}</td>${du ? `<td class="n">${fd(b - x.sr, 3)}</td>` : ""}</tr>`).join("")}
+      B.push(el(`<div class="h3">Calculul aplicat</div><table><thead><tr><th>Piezometru</th><th class="n">r (m)</th><th class="n">${sym} la t = ${fs(d.tstar)} min (m)</th>${du && !tr ? '<th class="n">h = b − s (m)</th>' : ""}</tr></thead><tbody>
+        ${d.vals.map(x => `<tr><td class="m">${dot(x.color)}${esc(x.name)}</td><td class="n">${fs(x.r, 4)}</td><td class="n">${fd(x.s, 3)}${x.interp ? " *" : ""}</td>${du && !tr ? `<td class="n">${fd(b - x.sr, 3)}</td>` : ""}</tr>`).join("")}
         </tbody></table>${d.vals.some(x => x.interp) ? `<p style="font-size:8.5pt;color:#587080;margin-top:1mm">* valoare interpolată între citirile vecine.</p>` : ""}
         <div class="calc" style="margin-top:3mm">
           ${cl("Panta dreptei", `Δ${v("s")}<sub>r</sub> = ${R(fd(d.dsR, 3) + " m / ciclu log de distanță")}${d.vals.length > 2 ? ` (R² = ${fs(d.r2, 4)})` : ""}`)}
           ${cl("Transmisivitatea", `${v("T")} = ${fr("0,366 × " + n4(Q), fd(d.dsR, 3))} = ${R(fs(d.T) + " m²/zi")}`)}
-          ${cl("Înmagazinarea", `${v("r")}₀ = ${fs(d.r0)} m;&nbsp; ${v("S")} = ${fr("2,25 × " + fs(d.T) + " × " + fs(tst, 4), fs(d.r0) + "²")} = ${R(sS(d.S))}`)}
-          ${cl("Verificarea u", `în cel mai îndepărtat piezometru ${v("u")} = ${fs(d.uFar, 2)} ${d.uFar < 0.05 ? `<span class="ok">&lt; 0,05 — condiție îndeplinită</span>` : `<span class="warn">&gt; 0,05 — moment prea timpuriu</span>`}`)}
-          ${du ? cl("Dupuit-Thiem", `${v("K")} = ${R(fs(d.dupuitK) + " m/zi")} = ${sci(d.dupuitK / 86400)} m/s;&nbsp; ${v("T")} = ${v("K")}·${v("b")} = ${fs(d.dupuitT)} m²/zi`) : (b > 0 ? cl("Permeabilitatea", `${v("K")} = ${fr(fs(d.T), fs(b, 4))} = ${R(fs(d.K) + " m/zi")} = ${sci(d.K / 86400)} m/s`) : "")}
+          ${tr ? cl("Înmagazinarea", `${v("r")}₀ = ${fs(d.r0)} m;&nbsp; ${v("S")} = ${fr("2,25 × " + fs(d.T) + " × " + fs(tst, 4), fs(d.r0) + "²")} = ${R(sS(d.S))}`) : cl("Înmagazinarea", "nu se poate determina din regimul stabilizat")}
+          ${tr ? cl("Verificarea u", `în cel mai îndepărtat piezometru ${v("u")} = ${fs(d.uFar, 2)} ${d.uFar < 0.05 ? `<span class="ok">&lt; 0,05 — condiție îndeplinită</span>` : `<span class="warn">&gt; 0,05 — moment prea timpuriu</span>`}`) : cl("Verificarea regimului", `Δs între piezometre a variat cu ${isFinite(d.dsChange) ? fs(d.dsChange * 100, 2) + " %" : "—"} în ultimul ciclu de timp ${isFinite(d.dsChange) && d.dsChange <= 0.05 ? `<span class="ok">— practic constant</span>` : `<span class="warn">— regimul poate să nu fie stabilizat</span>`}`)}
+          ${du && !tr ? cl("Dupuit-Thiem", `${v("K")} = ${R(fs(d.dupuitK) + " m/zi")} = ${sci(d.dupuitK / 86400)} m/s;&nbsp; ${v("T")} = ${v("K")}·${v("b")} = ${fs(d.dupuitT)} m²/zi`) : (b > 0 ? cl("Permeabilitatea", `${v("K")} = ${fr(fs(d.T), fs(b, 4))} = ${R(fs(d.K) + " m/zi")} = ${sci(d.K / 86400)} m/s`) : "")}
         </div>`));
     }
 
@@ -215,10 +226,15 @@
         <p>Permeabilitatea (coeficientul de filtrare) K se obține împărțind transmisivitatea la grosimea stratului pompat. Conversia în m/s: 1 m/zi = 1/86 400 m/s = 1,157·10⁻⁵ m/s.</p>
         <div class="eqs">${eq(`${v("K")} = ${fr(v("T"), v("b"))}&nbsp;&nbsp;&nbsp;&nbsp; ${v("K")}<sub>[m/s]</sub> = ${fr(v("K") + "<sub>[m/zi]</sub>", "86 400")}`)}${I.qu !== "md" ? eq(`${v("Q")} = ${n4(I.Qin)} ${I.quLabel} × ${I.qf} = ${n4(Q)} m³/zi`, "conversia debitului") : ""}</div>
         ${corrTxt}`));
-      B.push(el(`<table><thead><tr><th>Punct</th><th>Metodă</th><th class="n">T (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th></tr></thead><tbody>
-        ${res.all.filter(x => x.included).map(x => `<tr><td class="m">${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td></tr>`).join("")}
-        <tr class="mean"><td colspan="2">Medie aritmetică (rezultate incluse)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td></tr></tbody></table>
-        <p style="margin-top:3mm">${S.n > 1 ? `Rezultatele sunt ${S.spread < 0.2 ? "apropiate" : "diferite"} (abatere maximă ${fs(S.spread * 100, 2)} % față de medie). ` : ""}Valoarea medie este media aritmetică a rezultatelor incluse; rezultatele care nu trec verificările sunt excluse. Valoarea de proiectare se stabilește de inginer, ținând seama de graficele și observațiile din raport.</p>
+      const ad = isFinite(S.Kad);
+      B.push(el(`<table><thead><tr><th>Grup</th><th class="n">Rezultate incluse</th><th class="n">T mediu (m²/zi)</th><th class="n">K (m/zi)</th><th class="n">K (m/s)</th></tr></thead><tbody>
+        ${S.groups.map(g => `<tr><td class="m">${esc(g.name)}</td><td class="n">${g.rows.length}</td><td class="n">${fs(g.Tm)}</td><td class="n">${fs(g.Km)}</td><td class="n">${sci(g.Km / 86400)}</td></tr>`).join("")}
+        <tr class="mean"><td colspan="2">Media pe puncte (orientativ)</td><td class="n">${fs(S.Tm)}</td><td class="n">${fs(S.Km)}</td><td class="n">${sci(S.Km / 86400)}</td></tr></tbody></table>
+        <p style="margin-top:3mm">${S.n > 1 ? `Rezultatele incluse sunt ${S.spread < 0.2 ? "apropiate" : "diferite"} (abatere maximă ${fs(S.spread * 100, 2)} % față de media pe puncte). ` : ""}Media pe puncte este orientativă: rezultatele aceluiași punct (Cooper-Jacob, Theis, revenire) nu sunt măsurători independente, de aceea fiecare punct are aceeași pondere.</p>
+        <div class="tiles" style="grid-template-columns:1.3fr 2.7fr;margin-top:3mm">
+          <div class="tile main"><span class="k">K adoptat pentru proiectare</span><span class="v">${ad ? fs(S.Kad) + " m/zi" : "—"}</span><span class="u">${ad ? sci(S.Kad / 86400) + " m/s" : "necompletat"}</span></div>
+          <div class="tile"><span class="k">Justificare</span><span class="u" style="font-size:9.4pt;color:#10252f">${ad ? (S.just ? esc(S.just) : "<i>necompletată</i>") : "Valoarea de proiectare nu a fost adoptată. Se stabilește de inginer, ținând seama de graficele, verificările și observațiile din raport și de tipul de pământ din foraje."}</span></div>
+        </div>
         <div class="sign"><div>Întocmit</div><div>Verificat</div></div>`));
     }
 

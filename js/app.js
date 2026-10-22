@@ -5,11 +5,11 @@
   const C = window.PTChart;
   const $ = id => document.getElementById(id);
   const META = ["lucrare", "amplasament", "punct", "data", "firma"];
-  const SIMPLE = META.concat(["q", "qu", "b", "aq", "corr", "mode", "cj1", "cj2", "th1", "th2", "tp", "rr1", "rr2", "tstar"]);
+  const SIMPLE = META.concat(["q", "qu", "b", "aq", "corr", "mode", "cj1", "cj2", "th1", "th2", "tp", "rr1", "rr2", "tstar", "dmode", "kad", "kjust"]);
   const KEY = "teste-pompare-site-v2";
   const STD_T = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 75, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720, 900, 1080, 1260, 1440];
   const emptyRow = () => ({ t: "", v: ["", "", ""] });
-  const emptyStep = () => ({ mode: "h", ns: "", zp: "", rez: "1,5", pct: "70", qsel: "", qpred: "", rows: Array.from({ length: 6 }, () => ({ q: "", v: "" })) });
+  const emptyStep = () => ({ mode: "h", ns: "", zp: "", rez: "1,5", pct: "70", qsel: "", qpred: "", tstep: "", tmain: "1440", tcorr: "", rows: Array.from({ length: 6 }, () => ({ q: "", v: "" })) });
   const state = { n: 1, pts: [0, 1, 2].map(i => ({ name: "P" + (i + 1), r: "", ns: "", pw: false })), pump: [], rec: [], grid: "pump", incl: {}, step: emptyStep() };
   let last = null;
 
@@ -31,10 +31,12 @@
       d.innerHTML = `<div class="ttl"><b><span class="dot"></span>Punctul ${i + 1}</b><label class="check"><input type="checkbox" data-k="pw" ${p.pw ? "checked" : ""}> <span>este puțul de pompare</span></label></div>
         <div class="field nm"><label for="pn${i}">Denumire</label><input id="pn${i}" type="text" data-k="name" value="${esc(p.name)}"></div>
         <div class="field"><label for="pr${i}">Distanța r (m)</label><input id="pr${i}" type="text" inputmode="decimal" data-k="r" value="${esc(p.r)}"></div>
-        <div class="field"><label for="ps${i}">Nivel static (m)</label><input id="ps${i}" type="text" inputmode="decimal" data-k="ns" value="${esc(p.ns)}"></div>`;
+        <div class="field"><label for="ps${i}">Nivel static (m)</label><input id="ps${i}" type="text" inputmode="decimal" data-k="ns" value="${esc(p.ns)}"></div>
+        ${p.pw ? `<div class="field rcf"><label for="pc${i}">Raza coloanei rc (m)</label><input id="pc${i}" type="text" inputmode="decimal" data-k="rc" value="${esc(p.rc || "")}" placeholder="ex. 0,1"></div><p class="help rch">Raza coloanei în care oscilează nivelul. Din ea se calculează de când contează citirile din puț: t &gt; 25·rc²/T.</p>` : ""}`;
       d.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
         p[inp.dataset.k] = inp.type === "checkbox" ? inp.checked : inp.value;
         if (inp.dataset.k === "name") renderGridHead();
+        if (inp.dataset.k === "pw") { renderPts(); }
         sched();
       }));
       box.appendChild(d);
@@ -129,21 +131,29 @@
       if (p.th) det[p.idx + "|th"] = `ajustare pe ${p.th.n} citiri · eroare medie ${fs(p.th.rmse * 100, 2)} cm`;
       if (p.re) det[p.idx + "|re"] = `Δs′ = ${fs(p.re.ds)} m/ciclu · t′ ≥ ${fs(p.re.t1)} min${p.re.auto ? " (automat)" : ""} · s′(t/t′=1) = ${fs(p.re.a, 2)} m`;
     });
-    if (res.dist) det.dist = `la t = ${fs(res.dist.tstar)} min · Δs = ${fs(res.dist.dsR)} m/ciclu de distanță`;
-    const colOf = key => key === "dist" ? null : (res.points[+key.split("|")[0]] || {}).color;
-    const rowsHtml = res.all.map(x => {
-      const c = colOf(x.key);
-      const vk = x.valid ? `<span class="vk ok">✔ trece</span>` : `<span class="vk bad">⚠ ${esc(x.reasons.join("; "))}</span>`;
-      return `<tr class="${x.included ? "" : "off"}"><td><input type="checkbox" data-key="${x.key}" ${x.included ? "checked" : ""} aria-label="Include în medie ${esc(x.pt)} ${esc(x.method)}">${x.overridden ? ' <span class="vk man" title="Ales manual">manual</span>' : ""}</td>
-        <td class="m">${c ? `<i class="pk" style="background:${c};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px"></i>` : ""}${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${isFinite(x.S) ? fS(x.S) : "—"}</td><td>${vk}</td><td class="help">${det[x.key] || ""}</td></tr>`;
+    if (res.dist) { const d = res.dist; det[d.regime === "trans" ? "dist" : "thiem"] = `la t = ${fs(d.tstar)} min · Δs = ${fs(d.dsR)} m/ciclu de distanță${d.regime === "trans" ? ` · r₀ = ${fs(d.r0)} m` : " · regim stabilizat"}`; }
+    const colOf = g => g === "m" ? null : (res.points[g] || {}).color;
+    const dot = c => c ? `<i class="pk" style="background:${c};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px"></i>` : "";
+    const S = res.summary;
+    const order = []; res.all.forEach(x => { if (!order.includes(x.group)) order.push(x.group); });
+    const rowsHtml = [];
+    order.forEach(gid => {
+      const rows = res.all.filter(x => x.group === gid), g = S && S.groups.find(q => q.id === gid);
+      rows.forEach(x => {
+        const vk = x.valid ? `<span class="vk ok">✔ trece verificările automate</span>` : `<span class="vk bad">⚠ ${esc(x.reasons.join("; "))}</span>`;
+        rowsHtml.push(`<tr class="${x.included ? "" : "off"}"><td><input type="checkbox" data-key="${x.key}" ${x.included ? "checked" : ""} aria-label="Include în medie ${esc(x.pt)} ${esc(x.method)}">${x.overridden ? ' <span class="vk man" title="Ales manual">manual</span>' : ""}</td>
+          <td class="m">${dot(colOf(x.group))}${esc(x.pt)}</td><td>${x.method}</td><td class="n">${fs(x.T)}</td><td class="n">${fs(x.K)}</td><td class="n">${sci(x.K / 86400)}</td><td class="n">${isFinite(x.S) ? fS(x.S) : "—"}</td><td>${vk}</td><td class="help">${det[x.key] || ""}</td></tr>`);
+      });
+      rowsHtml.push(`<tr class="grp"><td></td><td colspan="2">Media ${gid === "m" ? "între piezometre" : "pentru " + esc(rows[0].pt)}${g ? ` (${g.rows.length} ${g.rows.length === 1 ? "rezultat inclus" : "rezultate incluse"})` : " — niciun rezultat inclus"}</td><td class="n">${g ? fs(g.Tm) : "—"}</td><td class="n">${g ? fs(g.Km) : "—"}</td><td class="n">${g ? sci(g.Km / 86400) : ""}</td><td class="n">${g && isFinite(g.S) ? fS(g.S) : ""}</td><td colspan="2"></td></tr>`);
     });
     $("res").innerHTML = rowsHtml.join("") || `<tr><td colspan="9" class="help">Rezultatele apar după ce introduci debitul, distanțele și citirile.</td></tr>`;
-    const S = res.summary;
+    const ad = S && isFinite(S.Kad);
     $("verdict").innerHTML = S ? `
-      <div class="tile main"><span class="k">Permeabilitate K medie</span><span class="v">${I.b > 0 ? fs(S.Km) + " m/zi" : "—"}</span><span class="u">${I.b > 0 ? sci(S.Km / 86400) + " m/s" : "introdu grosimea b"}</span></div>
-      <div class="tile"><span class="k">Transmisivitate T</span><span class="v">${fs(S.Tm)}</span><span class="u">m²/zi · medie din ${S.n} rezultate${S.nExcl ? ` (${S.nExcl} excluse)` : ""}</span></div>
-      <div class="tile"><span class="k">Înmagazinare S</span><span class="v">${fS(S.S)}</span><span class="u">${isFinite(S.S) ? "media rezultatelor incluse" : "nedeterminat"}</span></div>
-      ${S.n > 1 && I.b > 0 ? `<div class="tile"><span class="k">Interval K</span><span class="v">${fs(S.Kmin)}–${fs(S.Kmax)}</span><span class="u">m/zi</span></div>` : ""}`
+      <div class="tile main"><span class="k">${ad ? "K adoptat pentru proiectare" : "K adoptat — necompletat"}</span><span class="v">${ad ? fs(S.Kad) + " m/zi" : "—"}</span><span class="u">${ad ? sci(S.Kad / 86400) + " m/s" : "completează câmpul de mai jos"}</span></div>
+      <div class="tile"><span class="k">K orientativ (media pe puncte)</span><span class="v">${I.b > 0 ? fs(S.Km) + " m/zi" : "—"}</span><span class="u">${I.b > 0 ? sci(S.Km / 86400) + " m/s · " : ""}${S.groups.length} ${S.groups.length === 1 ? "grup" : "grupuri"}, ${S.n} rezultate${S.nExcl ? `, ${S.nExcl} excluse` : ""}</span></div>
+      <div class="tile"><span class="k">Interval K (rezultate incluse)</span><span class="v">${I.b > 0 ? fs(S.Kmin) + "–" + fs(S.Kmax) : "—"}</span><span class="u">m/zi</span></div>
+      <div class="tile"><span class="k">Transmisivitate T (orientativ)</span><span class="v">${fs(S.Tm)}</span><span class="u">m²/zi</span></div>
+      <div class="tile"><span class="k">Înmagazinare S</span><span class="v">${fS(S.S)}</span><span class="u">${isFinite(S.S) ? "media pe puncte" : "nedeterminat"}</span></div>`
       : `<div class="empty" style="grid-column:1/-1">Introdu datele ca să obții K.</div>`;
     $("notes").innerHTML = res.notes.map(([c, t]) => `<li class="${c}">${esc(t)}</li>`).join("");
     drawCharts(res);
@@ -166,9 +176,10 @@
     $("distCard").hidden = !res.dist;
     if (res.dist) {
       const d = res.dist;
-      $("legDI").innerHTML = d.vals.map(v => `<span><i class="pk" style="background:${v.color}"></i>${esc(v.name)} · r = ${fs(v.r)} m · s = ${fs(v.s)} m${v.interp ? " (interpolat)" : ""}</span>`).join("") + `<span><i class="pk" style="background:#0b4f6c"></i>r₀ = ${fs(d.r0)} m</span>`;
+      $("distTitle").textContent = d.regime === "trans" ? "Distanță–denivelare (Cooper-Jacob) · s – lg r" : (I.unconf ? "Dupuit-Thiem (regim stabilizat) · s – lg r" : "Thiem (regim stabilizat) · s – lg r");
+      $("legDI").innerHTML = d.vals.map(v => `<span><i class="pk" style="background:${v.color}"></i>${esc(v.name)} · r = ${fs(v.r)} m · s = ${fs(v.s)} m${v.interp ? " (interpolat)" : ""}</span>`).join("") + (d.regime === "trans" ? `<span><i class="pk" style="background:#0b4f6c"></i>r₀ = ${fs(d.r0)} m</span>` : "");
       chartInto("chDI", C.specDist(res), "");
-      $("capDI").textContent = `Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}. Panta pe un ciclu logaritmic de distanță: Δs = ${fs(d.dsR)} m.`;
+      $("capDI").textContent = `Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}. Panta pe un ciclu logaritmic de distanță: Δs = ${fs(d.dsR)} m. ${d.regime === "trans" ? "Regim nepermanent: se obțin T și S." : "Regim stabilizat: se obține doar T; S nu se poate determina."}${d.dmode === "auto" ? " Regimul a fost stabilit automat din creșterea denivelărilor în ultimul ciclu de timp." : ""}`;
     }
   }
 
@@ -181,7 +192,7 @@
   });
 
   /* ---------- testul în trepte ---------- */
-  const STF = ["mode", "ns", "zp", "rez", "pct", "qsel", "qpred"];
+  const STF = ["mode", "ns", "zp", "rez", "pct", "qsel", "qpred", "tstep", "tmain", "tcorr"];
   function stepFill() {
     STF.forEach(k => { $("st_" + k).value = state.step[k] ?? ""; });
     $("stBody").innerHTML = state.step.rows.map((r, i) => `<tr><td class="no">${i + 1}</td><td><input data-i="${i}" data-k="q" inputmode="decimal" value="${esc(r.q)}" aria-label="Debit treapta ${i + 1}"></td><td><input data-i="${i}" data-k="v" inputmode="decimal" value="${esc(r.v)}" aria-label="Nivel treapta ${i + 1}"></td><td class="stc" id="sts${i}"></td><td class="stc" id="stq${i}"></td><td class="stc" id="ste${i}"></td></tr>`).join("");
@@ -189,17 +200,19 @@
   function stepRender() {
     $("st_nsWrap").style.visibility = state.step.mode === "s" ? "hidden" : "visible";
     $("stVh").innerHTML = state.step.mode === "s" ? 'Denivelarea la sfârșitul treptei<span class="u">m</span>' : 'Nivel la sfârșitul treptei<span class="u">m față de reper</span>';
-    const st = window.PT.analyzeStep(state.step);
+    const full = analyze(raw()), st = full.step;
+    $("st_tcorr").placeholder = full.summary ? `${fs(full.summary.Tm)} (din fila Calcul)` : "din fila Calcul";
     state.step.rows.forEach((_, i) => { ["sts", "stq", "ste"].forEach(p => $(p + i).textContent = ""); });
-    if (st) st.rows.forEach(r => { $("sts" + r.i).textContent = fs(r.s, 3); $("stq" + r.i).textContent = fs(r.sq * 1000, 4); $("ste" + r.i).textContent = isFinite(r.E) ? fs(r.E * 100, 2) + " %" : ""; });
+    if (st) st.rows.forEach(r => { $("sts" + r.i).textContent = fs(r.s, 3); $("stq" + r.i).textContent = fs(r.sq * 1000, 4); $("ste" + r.i).textContent = isFinite(r.E) ? fs(r.E * 100, 2) + " %" : "—"; });
     const ok = st && isFinite(st.B);
     $("stVerdict").innerHTML = ok ? `
-      <div class="tile main"><span class="k">Q max pentru testul principal</span><span class="v">${isFinite(st.Qmax) ? fs(st.Qmax / 24) + " m³/h" : "—"}</span><span class="u">${isFinite(st.Qmax) ? fs(st.Qmax, 4) + " m³/zi · " + fs(st.pct * 100) + " % din s disponibil" : "completează nivelul static și adâncimea pompei"}</span></div>
-      <div class="tile"><span class="k">B (pierderea prin strat)</span><span class="v">${sci(st.B, 3)}</span><span class="u">zi/m²</span></div>
-      <div class="tile"><span class="k">C (pierderea în puț)</span><span class="v">${st.C > 0 ? sci(st.C, 3) : "—"}</span><span class="u">zi²/m⁵</span></div>
-      <div class="tile"><span class="k">Randament la debitul ales</span><span class="v">${st.sel ? fs(st.sel.E * 100, 2) + " %" : "—"}</span><span class="u">${st.sel ? "s ≈ " + fs(st.sel.s) + " m la " + fs(st.sel.Qh) + " m³/h" : "completează debitul ales"}</span></div>
+      <div class="tile main"><span class="k">Q orientativ pentru testul principal</span><span class="v">${isFinite(st.Qor) ? fs(st.Qor / 24) + " m³/h" : "—"}</span><span class="u">${isFinite(st.Qor) ? (st.corrected ? `B corectat pentru ${fs(st.tmain)} min` : "fără corecția duratei") + ` · ${fs(st.pct * 100)} % din s disponibil` : "completează nivelul static și adâncimea pompei"}</span></div>
+      ${st.corrected && isFinite(st.Qor0) ? `<div class="tile"><span class="k">Q din trepte, necorectat</span><span class="v">${fs(st.Qor0 / 24)} m³/h</span><span class="u">valabil doar pentru durata treptelor</span></div>` : ""}
+      <div class="tile"><span class="k">B — pierderi liniare (strat + puț)</span><span class="v">${sci(st.B, 3)}</span><span class="u">zi/m²${st.corrected ? ` · corectat: ${sci(st.Bm, 3)}` : ""}${st.invalid ? " · ajustare cu C = 0" : ""}</span></div>
+      <div class="tile"><span class="k">C — pierderi neliniare în puț</span><span class="v">${st.invalid ? "nedeterminat" : sci(st.C, 3)}</span><span class="u">${st.invalid ? "C ≤ 0: repetă testul" : "zi²/m⁵"}</span></div>
+      <div class="tile"><span class="k">Randament aparent la debitul ales</span><span class="v">${st.sel && isFinite(st.sel.E) ? fs(st.sel.E * 100, 2) + " %" : "—"}</span><span class="u">${st.invalid ? "nu se calculează (C ≤ 0)" : st.sel ? "s ≈ " + fs(st.sel.s) + " m la " + fs(st.sel.Qh) + " m³/h" + (st.corrected ? `, după ${fs(st.tmain)} min` : "") : "completează debitul ales"}</span></div>
       ${isFinite(st.sdisp) ? `<div class="tile"><span class="k">Denivelare disponibilă</span><span class="v">${fs(st.sdisp)} m</span><span class="u">limită de lucru ${fs(st.slim)} m</span></div>` : ""}
-      ${st.pred ? `<div class="tile"><span class="k">Estimare la ${fs(st.pred.Qh)} m³/h</span><span class="v">${fs(st.pred.s)} m</span><span class="u">denivelarea în puț</span></div>` : ""}`
+      ${st.pred ? `<div class="tile"><span class="k">Estimare la ${fs(st.pred.Qh)} m³/h</span><span class="v">${fs(st.pred.s)} m</span><span class="u">denivelarea în puț${st.corrected ? `, după ${fs(st.tmain)} min` : ""}</span></div>` : ""}`
       : `<div class="empty" style="grid-column:1/-1">Rezultatele apar după ce completezi cel puțin două trepte.</div>`;
     $("stNotes").innerHTML = (st ? st.notes : []).map(([c, t]) => `<li class="${c}">${esc(t)}</li>`).join("");
     if ($("tab-step").hidden) return;
@@ -219,7 +232,7 @@
   });
   function stepExample() {
     const c = x => String(x).replace(".", ",");
-    state.step = Object.assign(emptyStep(), { mode: "h", ns: "3,40", zp: "10,5", rez: "1,5", pct: "70", qsel: "50", qpred: "60" });
+    state.step = Object.assign(emptyStep(), { mode: "h", ns: "3,40", zp: "10,5", rez: "1,5", pct: "70", qsel: "50", qpred: "60", tstep: "120", tmain: "1440", tcorr: "" });
     [15, 30, 45, 60].forEach((q, i) => { const Q = q * 24; state.step.rows[i] = { q: String(q), v: c((3.40 + 1.6e-3 * Q + 3e-7 * Q * Q).toFixed(2)) }; });
   }
   $("stEx").addEventListener("click", () => { stepExample(); stepFill(); stepRender(); save(); });
@@ -261,7 +274,7 @@
     const tr = [0.5, 1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720];
     state.rec = tr.map(t => ({ t: c(t), v: P.map(p => c((p.ns + theisS(Qm, T, S, p.r, (1440 + t) / 1440) - theisS(Qm, T, S, p.r, t / 1440) + rnd() * 0.01).toFixed(2))) }));
     const d = new Date();
-    setSimple({ lucrare: "Exemplu — incintă excavată, epuizment", amplasament: "București (date sintetice)", punct: "PP1",
+    setSimple({ dmode: "auto", kad: "", kjust: "", lucrare: "Exemplu — incintă excavată, epuizment", amplasament: "București (date sintetice)", punct: "PP1",
       data: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, firma: "Exemplu Foraj SRL",
       q: "50", qu: "mh", b: "15", aq: "c", corr: true, mode: "h", cj1: "", cj2: "", th1: "", th2: "", tp: "1440", rr1: "", rr2: "", tstar: "" });
     $("exNote").hidden = false;

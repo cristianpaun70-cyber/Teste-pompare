@@ -198,3 +198,9 @@ table.grid button.x:hover { color: var(--coral); background: #fdf0ee; }
 .vk.bad { background: #fdf0d8; color: #7a5208; white-space: normal; }
 .vk.man { background: var(--foam); color: var(--deep); }
 #stBody td.stc { font-family: var(--f-mono); font-size: .84rem; color: var(--deep); padding: 5px 8px; white-space: nowrap; }
+
+#res tr.grp td { background: var(--foam); font-weight: 600; color: var(--deep); border-bottom: 2px solid var(--line); font-size: .85rem; }
+#res tr.grp td.n { font-family: var(--f-mono); }
+.adopt { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr); gap: 12px; padding: 12px; border: 1px dashed var(--ocean); border-radius: 8px; background: #f7fbfd; }
+@media (max-width: 700px) { .adopt { grid-template-columns: minmax(0, 1fr); } }
+.pt .rch { grid-column: 2 / -1; margin: 0; align-self: center; }
