@@ -170,6 +170,36 @@
       if (th.rmse > 0.05 * pt.smax) notes.push(["warn", tag("curba Theis nu urmărește bine citirile (eroare peste 5 % din denivelarea maximă). Pot exista limite, drenanță sau cedare întârziată; restrânge intervalul.")]);
     }
 
+    /* Modele pentru acvifer semi-captiv (Hantush-Jacob) și cedare întârziată (Boulton) */
+    const M = global.PTM;
+    const mPts = thPts.length >= 8 ? thPts : pos;
+    if (M && Q > 0 && r > 0 && !isPW && mPts.length >= 8 && (pt.th || pt.cj)) {
+      const tEnd = mPts[mPts.length - 1].t / 1440, base = pt.th || pt.cj;
+      if (!ctx.unconf) {
+        const h = M.fitHantush(Q, r, mPts, base.T, Math.min(Math.max(base.S || 1e-3, 1e-6), 0.1));
+        const sH = M.hantushS(Q, h.T, h.S, h.L, r, tEnd), sTh = theisS(Q, h.T, h.S, r, tEnd);
+        h.dev = sH > 0 ? sTh / sH - 1 : 0;
+        h.sig = h.dev > 0.05 && (!pt.th || h.rmse < 0.7 * pt.th.rmse);
+        h.forced = ctx.aq === "l";
+        h.K = KofT(h.T);
+        if (h.sig || h.forced) pt.hant = h;
+        if (h.sig) notes.push(["warn", tag(`curba se aplatizează spre final (la ${fs(tEnd * 1440)} min, Theis ar da cu ${fs(h.dev * 100, 2)} % mai mult): stratul primește apă prin acoperiș (drenanță) sau de la o limită de alimentare (râu, lac). Se aplică Hantush-Jacob; Cooper-Jacob, Theis și revenirea acestui punct sunt excluse. Dacă în apropiere există un râu, T rămâne valabil, dar L și c nu descriu acoperișul.`)]);
+        else if (h.forced) notes.push(["info", tag(`Hantush-Jacob: drenanța nu se vede clar în durata testului (Theis ar da la final doar cu ${fs(Math.max(h.dev, 0) * 100, 2)} % mai mult); L și c rezultate sunt nesigure, T rămâne valabil.`)]);
+      } else {
+        const cjS = pt.cj && pt.cj.S > 0.01 && pt.cj.S < 0.35 ? pt.cj.S : 0.1;
+        const bo = M.fitBoulton(Q, r, mPts, (pt.re || pt.cj || base).T, cjS);
+        bo.sig = bo.S < 0.2 * bo.Sy && (!pt.th || bo.rmse < 0.7 * pt.th.rmse);
+        const sB = M.boultonS(Q, bo.T, bo.S, bo.Sy, bo.alpha, r, tEnd), sLate = theisS(Q, bo.T, bo.S + bo.Sy, r, tEnd);
+        bo.late = sLate > 0 ? Math.abs(sB / sLate - 1) : 1;
+        bo.tEnd = tEnd * 1440;
+        bo.K = KofT(bo.T);
+        if (bo.sig) {
+          pt.boul = bo;
+          notes.push(["warn", tag("curba are forma tipică cedării întârziate (urcă, se aplatizează, apoi urcă din nou). Se aplică Boulton, care folosește toate citirile; Theis pe toată curba este exclus.")]);
+        }
+      }
+    }
+
     /* Revenire */
     const tp = ctx.tp;
     pt.rec = ctx.rec.map(row => ({ t: row.t, v: row.v[idx] })).filter(p => p.t > 0 && isFinite(p.v))
@@ -284,7 +314,7 @@
   function analyze(raw) {
     const Qin = num(raw.q), qu = raw.qu || "mh";
     const n = Math.min(3, Math.max(1, parseInt(raw.n, 10) || 1));
-    const inp = { Qin, qu, quLabel: QU[qu], qf: QF[qu], Q: Qin * QF[qu], b: num(raw.b), unconf: raw.aq === "u", modeH: raw.mode === "h", n };
+    const inp = { Qin, qu, quLabel: QU[qu], qf: QF[qu], Q: Qin * QF[qu], b: num(raw.b), unconf: raw.aq === "u", leaky: raw.aq === "l", modeH: raw.mode === "h", n };
     inp.corr = inp.unconf && !!raw.corr;
     const R = { a1: num(raw.cj1), a2: num(raw.cj2), b1: num(raw.th1), b2: num(raw.th2), c1: num(raw.rr1), c2: num(raw.rr2) };
     const rows = arr => (arr || []).map(r => ({ t: num(r.t), v: [0, 1, 2].map(i => num((r.v || [])[i])) })).filter(r => isFinite(r.t)).sort((a, b) => a.t - b.t);
@@ -297,7 +327,7 @@
     if (!(Q > 0)) notes.push(["bad", "Introdu debitul Q."]);
     if (!(b > 0)) notes.push(["warn", "Fără grosimea b se poate calcula T, dar nu și K = T/b."]);
 
-    const ctx = { Q, b, corr: inp.corr, unconf: inp.unconf, modeH: inp.modeH, R, pump, rec, tp: inp.tp };
+    const ctx = { Q, b, corr: inp.corr, unconf: inp.unconf, aq: raw.aq, modeH: inp.modeH, R, pump, rec, tp: inp.tp };
     const points = [];
     for (let i = 0; i < n; i++) points.push(analyzePoint(ctx, (raw.pts || [])[i] || {}, i));
     points.forEach(p => notes.push(...p.notes));
@@ -339,6 +369,12 @@
             else notes.push(["warn", `Distanță–denivelare: u = ${fs(dist.uFar, 2)} în cel mai îndepărtat piezometru (> 0,05). Alege un moment mai târziu.`]);
             if (stabDetected) notes.push(["warn", "Denivelările aproape nu mai cresc la momentul comparației (regim practic stabilizat): metoda distanță–denivelare nepermanentă nu este potrivită, iar S calculat din r₀ nu are sens. Folosește Thiem."]);
           } else {
+            const leak = inp.leaky || points.some(p => p.hant && p.hant.sig);
+            if (leak && !inp.unconf && global.PTM) {
+              const g = global.PTM.fitDeGlee(Q, vals.map(x => ({ r: x.p.r, s: x.v.s })), T);
+              g.K = b > 0 ? g.T / b : NaN; dist.deGlee = g;
+              notes.push(["info", `Acvifer drenant în regim stabilizat: în loc de Thiem se aplică de Glee, s = Q/(2πT)·K0(r/L): T = ${fs(g.T)} m²/zi, L = ${fs(g.L)} m. Thiem ar subestima T.`]);
+            }
             if (inp.unconf && b > 0) {
               const L2 = linreg(vals.map(x => Math.log(x.p.r)), vals.map(x => Math.pow(b - x.v.sr, 2)));
               if (L2 && L2.m > 0) { dist.dupuitK = Q / (Math.PI * L2.m); dist.dupuitT = dist.dupuitK * b; }
@@ -368,22 +404,34 @@
       const included = has ? !!incl[key] : valid;
       all.push({ key, group, gname, pt, method, T: x.T, K: x.K, S, pw, valid, reasons: bad, included, overridden: has });
     };
+    const leakAny = points.some(p => p.hant && p.hant.sig);
     points.forEach(p => {
       const o25 = [p.over25, `s max > 25 % din b (nivel liber)`];
+      const lk = [!!(p.hant && p.hant.sig), "curba se aplatizează (drenanță sau alimentare): metoda presupune acvifer fără alimentare — folosește Hantush-Jacob"];
+      const dy = [!!p.boul, "cedare întârziată: curba nu are forma Theis — folosește Boulton"];
       if (p.cj) push(`${p.idx}|cj`, p.idx, p.name, p.name, "Cooper-Jacob", p.cj, p.isPW ? NaN : p.cj.S,
-        [[!p.isPW && isFinite(p.cj.u) && p.cj.u >= 0.05, `u = ${fs(p.cj.u, 2)} > 0,05`], [p.cj.r2 < 0.97, `R² = ${fs(p.cj.r2, 3)} < 0,97`], o25].concat(p.isPW ? [] : sChk(p.cj.S)), p.isPW);
+        [[!p.isPW && isFinite(p.cj.u) && p.cj.u >= 0.05, `u = ${fs(p.cj.u, 2)} > 0,05`], [p.cj.r2 < 0.97, `R² = ${fs(p.cj.r2, 3)} < 0,97`], o25, lk].concat(p.isPW ? [] : sChk(p.cj.S)), p.isPW);
       if (p.th) push(`${p.idx}|th`, p.idx, p.name, p.name, "Theis", p.th, p.isPW ? NaN : p.th.S,
-        [[p.isPW, "în puțul pompat curba Theis e afectată de pierderile din filtru"], [p.th.rmse > 0.05 * p.smax, `eroare ${fs(p.th.rmse * 100, 2)} cm > 5 % din s max`], o25].concat(p.isPW ? [] : sChk(p.th.S)), p.isPW);
+        [[p.isPW, "în puțul pompat curba Theis e afectată de pierderile din filtru"], [p.th.rmse > 0.05 * p.smax, `eroare ${fs(p.th.rmse * 100, 2)} cm > 5 % din s max`], o25, lk, dy].concat(p.isPW || p.boul ? [] : sChk(p.th.S)), p.isPW);
       if (p.re) push(`${p.idx}|re`, p.idx, p.name, p.name, "Revenire", p.re, NaN,
         [[Math.abs(p.re.a) > 0.05 * p.smax, `s′ la t/t′ = 1 este ${fs(p.re.a, 2)} m (departe de 0)`], [p.re.r2 < 0.97, `R² = ${fs(p.re.r2, 3)} < 0,97`],
-         [isFinite(p.re.uRe) && p.re.uRe >= 0.05, `u′ = ${fs(p.re.uRe, 2)} > 0,05 la t′ = ${fs(p.re.t1)} min (lipsesc citirile târzii)`], o25], p.isPW);
+         [isFinite(p.re.uRe) && p.re.uRe >= 0.05, `u′ = ${fs(p.re.uRe, 2)} > 0,05 la t′ = ${fs(p.re.t1)} min (lipsesc citirile târzii)`], o25, lk], p.isPW);
+      if (p.hant) push(`${p.idx}|ha`, p.idx, p.name, p.name, "Hantush-Jacob (semi-captiv)", p.hant, p.hant.S,
+        [[p.hant.rmse > 0.05 * p.smax, `eroare ${fs(p.hant.rmse * 100, 2)} cm > 5 % din s max`]].concat(sChk(p.hant.S)), false);
+      if (p.boul) push(`${p.idx}|bo`, p.idx, p.name, p.name, "Boulton (cedare întârziată)", p.boul, p.boul.Sy,
+        [[p.boul.rmse > 0.05 * p.smax, `eroare ${fs(p.boul.rmse * 100, 2)} cm > 5 % din s max`], o25,
+         [p.boul.late > 0.1, `testul nu a ajuns în porțiunea finală a curbei (cedarea din pori nu s-a încheiat până la ${fs(p.boul.tEnd)} min): T și Sy nesigure — testul trebuia prelungit`]].concat(sChk(p.boul.Sy)), false);
     });
     if (dist) {
       const grp = "m", gn = "Între piezometre", pn = dist.vals.map(v => v.name).join("–");
       if (dist.regime === "trans") {
         push("dist", grp, gn, pn, "Distanță–denivelare (Cooper-Jacob)", dist, dist.S,
-          [[dist.uFar >= 0.05, `u = ${fs(dist.uFar, 2)} > 0,05 în cel mai îndepărtat piezometru`], [dist.stabDetected, "regim practic stabilizat: folosește Thiem"],
+          [[dist.uFar >= 0.05, `u = ${fs(dist.uFar, 2)} > 0,05 în cel mai îndepărtat piezometru`], [dist.stabDetected, "regim practic stabilizat: folosește Thiem"], [leakAny, "acvifer drenant: metoda presupune acvifer fără alimentare"],
            [dist.vals.length >= 3 && dist.r2 < 0.98, `piezometrele nu sunt aliniate (R² = ${fs(dist.r2, 3)})`]].concat(sChk(dist.S)), false);
+      } else if ((leakAny || inp.leaky) && dist.deGlee) {
+        const g = dist.deGlee;
+        push("deglee", grp, gn, pn, "de Glee (drenant, regim stabilizat)", g, NaN,
+          [[!dist.stabDetected, "denivelările încă cresc: regimul nu este stabilizat"], [g.rmse > 0.05 * Math.max(...dist.vals.map(v => v.s)), "denivelările nu se potrivesc cu soluția de Glee"]], false);
       } else {
         const du = inp.unconf && dist.dupuitK;
         push("thiem", grp, gn, pn, du ? "Dupuit-Thiem (regim stabilizat)" : "Thiem (regim stabilizat)", { T: du ? dist.dupuitT : dist.T, K: du ? dist.dupuitK : dist.K }, NaN,

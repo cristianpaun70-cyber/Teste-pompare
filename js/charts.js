@@ -60,7 +60,7 @@
     (o.series || []).forEach(s => {
       const col = s.color || (s.type === "pts" ? pal.pt : pal.fit);
       if (s.type === "line" && s.data.length > 1)
-        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), { stroke: s.color && !s.keep ? darker(col, 0.82) : col, width: s.dash ? 1.8 : 2.1, dash: s.dash ? [6, 4] : null });
+        be.poly(s.data.map(p => [sx(p[0]), sy(p[1])]), { stroke: s.color && !s.keep ? darker(col, s.dash === "dot" ? 0.6 : 0.82) : col, width: s.dash === "dot" ? 2.2 : s.dash ? 1.8 : 2.1, dash: s.dash === "dot" ? [2, 3] : s.dash ? [6, 4] : null });
       if (s.type === "pts") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), 3.6, p[2] ? { fill: col, stroke: col, width: 1.4 } : { fill: "none", stroke: col, width: 1.4 }));
       if (s.type === "mk") s.data.forEach(p => be.circle(sx(p[0]), sy(p[1]), s.r || 4.6, { fill: col, stroke: "#ffffff", width: 1.5 }));
       if (s.type === "text") be.text(sx(s.x), sy(s.y), s.text, { size: 11, weight: 600, color: col, family: pal.font, anchor: s.anchor || "start" });
@@ -139,6 +139,16 @@
         for (let i = 0; i <= 90; i++) { const t = x0 * Math.pow(x1 / x0, i / 90), s = theisS(res.inp.Q, p.th.T, p.th.S, p.r, t / 1440); if (s > 0) cv.push([t, Math.max(s, y0 * 0.3)]); }
         ser.push({ type: "line", color: p.color, dash: true, data: cv });
       }
+      const M = global.PTM;
+      if (M && (p.hant || p.boul)) {
+        const cv = [];
+        for (let i = 0; i <= 60; i++) {
+          const t = x0 * Math.pow(x1 / x0, i / 60), td = t / 1440;
+          const s = p.hant ? M.hantushS(res.inp.Q, p.hant.T, p.hant.S, p.hant.L, p.r, td) : M.boultonS(res.inp.Q, p.boul.T, p.boul.S, p.boul.Sy, p.boul.alpha, p.r, td);
+          if (s > 0) cv.push([t, Math.max(s, y0 * 0.3)]);
+        }
+        ser.push({ type: "line", color: p.color, dash: "dot", data: cv });
+      }
       ser.push({ type: "pts", color: p.color, data: p.pump.filter(q => q.s > 0).map(q => [q.t, q.s, inRange(q.t, res.R.b1, res.R.b2)]) });
     });
     return { xLog: true, yLog: true, x0, x1, y0, y1, series: ser, xl: "timp de la pornire t (min)", yl: "denivelare s (m)" };
@@ -164,6 +174,7 @@
     const ser = [{ type: "line", data: [[x0, d.a - d.dsR * Math.log10(x0)], [x1, d.a - d.dsR * Math.log10(x1)]] }];
     d.vals.forEach(v => ser.push({ type: "pts", color: v.color, data: [[v.r, v.s, true]] }));
     if (isFinite(d.r0)) ser.push({ type: "mk", data: [[d.r0, 0]] });
+    if (d.deGlee && global.PTM) { const cv = []; for (let i = 0; i <= 50; i++) { const r = x0 * Math.pow(x1 / x0, i / 50); cv.push([r, global.PTM.deGleeS(res.inp.Q, d.deGlee.T, d.deGlee.L, r)]); } ser.unshift({ type: "line", color: "#2a9d8f", keep: true, dash: "dot", data: cv }); }
     return { xLog: true, x0, x1, y0: 0, y1, series: ser, xl: "distanța de la puț r (m)", yl: `denivelare s (m) la t = ${fs(d.tstar)} min` };
   }
 

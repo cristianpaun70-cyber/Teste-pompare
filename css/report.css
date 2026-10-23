@@ -118,3 +118,4 @@
   .page { break-after: page; page-break-after: always; }
   .page:last-child { break-after: auto; page-break-after: auto; }
 }
+.lims { display: inline-flex; flex-direction: column; align-items: flex-start; font-size: 7.5pt; line-height: 1; vertical-align: middle; margin-left: -.6mm; }

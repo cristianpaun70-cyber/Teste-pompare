@@ -119,7 +119,7 @@
   /* ---------- rezultate ---------- */
   function legend(res, which) {
     return res.points.filter(p => which === "re" ? p.rec.length : p.pump.length).map(p => `<span><i class="pk" style="background:${p.color}"></i>${esc(p.name)}${p.isPW ? " (puț)" : ""} · r = ${fs(p.r)} m</span>`).join("")
-      + (which === "cj" ? `<span>cercuri pline = citiri folosite la dreaptă</span>` : which === "th" ? `<span>linie întreruptă = curba Theis</span>` : "");
+      + (which === "cj" ? `<span>cercuri pline = citiri folosite la dreaptă</span>` : which === "th" ? `<span>linie întreruptă = curba Theis</span>${res.points.some(p => p.hant) ? "<span>linie punctată = Hantush-Jacob</span>" : ""}${res.points.some(p => p.boul) ? "<span>linie punctată = Boulton</span>" : ""}` : "");
   }
   function render() {
     const res = last = analyze(raw()), I = res.inp;
@@ -129,8 +129,11 @@
     res.points.forEach(p => {
       if (p.cj) det[p.idx + "|cj"] = `Δs = ${fs(p.cj.ds)} m/ciclu · de la ${fs(p.cj.t1)} min${p.cj.auto ? " (automat)" : ""} · R² = ${fs(p.cj.r2, 4)}`;
       if (p.th) det[p.idx + "|th"] = `ajustare pe ${p.th.n} citiri · eroare medie ${fs(p.th.rmse * 100, 2)} cm`;
+      if (p.hant) det[p.idx + "|ha"] = `L = ${fs(p.hant.L)} m · c = L²/T = ${fs(p.hant.c)} zile · eroare medie ${fs(p.hant.rmse * 100, 2)} cm`;
+      if (p.boul) det[p.idx + "|bo"] = `S = ${fS(p.boul.S)} (început) · Sy = ${fs(p.boul.Sy)} · α = ${fs(p.boul.alpha)} 1/zi · eroare ${fs(p.boul.rmse * 100, 2)} cm`;
       if (p.re) det[p.idx + "|re"] = `Δs′ = ${fs(p.re.ds)} m/ciclu · t′ ≥ ${fs(p.re.t1)} min${p.re.auto ? " (automat)" : ""} · s′(t/t′=1) = ${fs(p.re.a, 2)} m`;
     });
+    if (res.dist && res.dist.deGlee) det.deglee = `la t = ${fs(res.dist.tstar)} min · L = ${fs(res.dist.deGlee.L)} m · c = ${fs(res.dist.deGlee.c)} zile`;
     if (res.dist) { const d = res.dist; det[d.regime === "trans" ? "dist" : "thiem"] = `la t = ${fs(d.tstar)} min · Δs = ${fs(d.dsR)} m/ciclu de distanță${d.regime === "trans" ? ` · r₀ = ${fs(d.r0)} m` : " · regim stabilizat"}`; }
     const colOf = g => g === "m" ? null : (res.points[g] || {}).color;
     const dot = c => c ? `<i class="pk" style="background:${c};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px"></i>` : "";
@@ -171,12 +174,12 @@
     chartInto("chTH", C.specTH(res), "Introdu citirile de pompare.");
     chartInto("chRE", C.specRE(res), "Introdu citirile de revenire.");
     $("capCJ").textContent = res.points.filter(p => p.cj).map(p => `${p.name}: Δs = ${fs(p.cj.ds)} m/ciclu, t₀ = ${fs(p.cj.t0)} min`).join(" · ");
-    $("capTH").textContent = res.points.filter(p => p.th).map(p => `${p.name}: T = ${fs(p.th.T)} m²/zi, S = ${fS(p.th.S)}`).join(" · ");
+    $("capTH").textContent = res.points.filter(p => p.th).map(p => `${p.name}: Theis T = ${fs(p.th.T)} m²/zi, S = ${fS(p.th.S)}` + (p.hant ? `; Hantush T = ${fs(p.hant.T)}, L = ${fs(p.hant.L)} m` : "") + (p.boul ? `; Boulton T = ${fs(p.boul.T)}, Sy = ${fs(p.boul.Sy)}` : "")).join(" · ");
     $("capRE").textContent = res.points.filter(p => p.re).map(p => `${p.name}: Δs′ = ${fs(p.re.ds)} m/ciclu`).join(" · ");
     $("distCard").hidden = !res.dist;
     if (res.dist) {
       const d = res.dist;
-      $("distTitle").textContent = d.regime === "trans" ? "Distanță–denivelare (Cooper-Jacob) · s – lg r" : (I.unconf ? "Dupuit-Thiem (regim stabilizat) · s – lg r" : "Thiem (regim stabilizat) · s – lg r");
+      $("distTitle").textContent = d.regime === "trans" ? "Distanță–denivelare (Cooper-Jacob) · s – lg r" : (d.deGlee ? "de Glee (drenant, regim stabilizat) · s – lg r" : I.unconf ? "Dupuit-Thiem (regim stabilizat) · s – lg r" : "Thiem (regim stabilizat) · s – lg r");
       $("legDI").innerHTML = d.vals.map(v => `<span><i class="pk" style="background:${v.color}"></i>${esc(v.name)} · r = ${fs(v.r)} m · s = ${fs(v.s)} m${v.interp ? " (interpolat)" : ""}</span>`).join("") + (d.regime === "trans" ? `<span><i class="pk" style="background:#0b4f6c"></i>r₀ = ${fs(d.r0)} m</span>` : "");
       chartInto("chDI", C.specDist(res), "");
       $("capDI").textContent = `Denivelările din piezometre la t = ${fs(d.tstar)} min${d.autoT ? " (ultimul timp comun)" : ""}. Panta pe un ciclu logaritmic de distanță: Δs = ${fs(d.dsR)} m. ${d.regime === "trans" ? "Regim nepermanent: se obțin T și S." : "Regim stabilizat: se obține doar T; S nu se poate determina."}${d.dmode === "auto" ? " Regimul a fost stabilit automat din creșterea denivelărilor în ultimul ciclu de timp." : ""}`;

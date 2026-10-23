@@ -189,11 +189,51 @@
       });
     }
 
+    // Hantush-Jacob (semi-captiv)
+    if (P.some(p => p.hant)) {
+      B.push(el(h2(++no, "Metoda Hantush-Jacob (acvifer semi-captiv)") + `
+        <p>Când stratul acoperitor nu este complet impermeabil, în timpul pompării el cedează apă stratului pompat (drenanță). Curba denivelare–timp urcă la început ca la Theis, apoi se aplatizează și tinde spre o valoare stabilizată. Soluția Hantush-Jacob (1955) include acest aport prin factorul de drenanță L = √(T·c), unde c = b′/K′ este rezistența hidraulică a stratului acoperitor (zile). Parametrii T, S și L s-au determinat prin ajustarea curbei pe citiri (metoda celor mai mici pătrate); funcția de puț s-a calculat prin inversarea numerică a soluției din spațiul Laplace (Stehfest). Aceeași formă a curbei poate fi produsă și de o limită de alimentare (râu, lac): în acest caz T rămâne valabil, dar L și c nu descriu stratul acoperitor.</p>
+        <div class="eqs">
+          ${eq(`${v("s")} = ${fr(v("Q"), "4π" + v("T"))} · ${v("W")}(${v("u")}, ${v("r")}/${v("L")})&nbsp;&nbsp;&nbsp;&nbsp; ${v("W")}(${v("u")}, ${v("r")}/${v("L")}) = ∫<span class="lims"><span>∞</span><span>${v("u")}</span></span> ${fr("1", v("y"))}·exp(−${v("y")} − ${fr(v("r") + "²", "4" + v("L") + "²" + v("y"))}) d${v("y")}`, "Hantush-Jacob")}
+          ${eq(`${v("u")} = ${fr(v("r") + "² · " + v("S"), "4 · " + v("T") + " · " + v("t"))}&nbsp;&nbsp;&nbsp;&nbsp; ${v("L")} = √(${v("T")} · ${v("c")})&nbsp;&nbsp;&nbsp;&nbsp; ${v("c")} = ${fr(v("b") + "′", v("K") + "′")}`)}
+        </div>`));
+      P.filter(p => p.hant).forEach(p => {
+        const h = p.hant;
+        B.push(el(ptTitle(p) + `<div class="calc">
+          ${cl("Parametri ajustați", `${v("T")} = ${R(fs(h.T) + " m²/zi")}&nbsp; ${v("S")} = ${R(sS(h.S))}&nbsp; ${v("L")} = ${R(fs(h.L) + " m")}`)}
+          ${cl("Stratul acoperitor", `${v("c")} = ${fr(v("L") + "²", v("T"))} = ${fr(fs(h.L) + "²", fs(h.T))} = ${R(fs(h.c) + " zile")};&nbsp; ${v("K")}′/${v("b")}′ = 1/${v("c")} = ${sci(1 / h.c, 3)} 1/zi`)}
+          ${cl("Calitatea ajustării", `eroarea medie pătratică = ${fs(h.rmse * 100, 2)} cm, pe ${h.n} citiri;&nbsp; la final, Theis ar da cu ${fs(Math.max(h.dev, 0) * 100, 2)} % mai mult ${h.sig ? `<span class="warn">— drenanță vizibilă</span>` : `<span class="ok">— drenanța nu se vede clar în durata testului</span>`}`)}
+          ${b > 0 ? cl("Permeabilitatea", `${v("K")} = ${fr(fs(h.T), fs(b, 4))} = ${R(fs(h.K) + " m/zi")} = ${sci(h.K / 86400)} m/s`) : ""}
+        </div>`));
+      });
+    }
+
+    // Boulton (cedare întârziată)
+    if (P.some(p => p.boul)) {
+      B.push(el(h2(++no, "Metoda Boulton (cedare întârziată, nivel liber)") + `
+        <p>În acviferele cu nivel liber, apa este cedată în două etape: imediat, prin compresibilitate (coeficientul S, mic), și cu întârziere, prin golirea porilor deasupra nivelului care coboară (cedarea specifică Sy, mare). Curba denivelare–timp are trei porțiuni: o primă creștere de tip Theis cu S, un palier în care porii se golesc treptat și o a doua creștere de tip Theis cu S + Sy. Modelul Boulton (1963) descrie acest comportament prin indicele de întârziere 1/α. Parametrii T, S, Sy și α s-au determinat prin ajustarea curbei pe toate citirile, cu inversarea numerică a soluției din spațiul Laplace (Stehfest). Pentru piezometre filtrate pe toată grosimea, curbele Boulton sunt practic identice cu curbele tip Neuman (1975); conform lui Neuman, α nu este o constantă a stratului (variază cu distanța), de aceea din α nu se calculează permeabilitatea pe verticală.</p>
+        <div class="eqs">
+          ${eq(`${v("s")} = ${fr(v("Q"), "4π" + v("T"))} · ${v("W")}(${v("u")}<sub>A</sub> sau ${v("u")}<sub>B</sub>, ${v("r")}/${v("D")})&nbsp;&nbsp;&nbsp;&nbsp; ${v("u")}<sub>A</sub> = ${fr(v("r") + "²" + v("S"), "4" + v("T") + v("t"))}&nbsp;&nbsp;&nbsp; ${v("u")}<sub>B</sub> = ${fr(v("r") + "²" + v("S") + "<sub>y</sub>", "4" + v("T") + v("t"))}&nbsp;&nbsp;&nbsp; ${v("D")} = √(${fr(v("T"), "α" + v("S") + "<sub>y</sub>")})`, "Boulton")}
+          ${eq(`${v("s")}<sub>L</sub>(${v("p")}) = ${fr(v("Q"), "2π" + v("T") + v("p"))} · K<sub>0</sub>(${v("r")}·√(${fr(v("p"), v("T"))}·(${v("S")} + ${fr("α" + v("S") + "<sub>y</sub>", v("p") + " + α")})))`, "forma Laplace folosită la calcul (p = variabila Laplace)")}
+        </div>`));
+      P.filter(p => p.boul).forEach(p => {
+        const o = p.boul;
+        B.push(el(ptTitle(p) + `<div class="calc">
+          ${cl("Parametri ajustați", `${v("T")} = ${R(fs(o.T) + " m²/zi")}&nbsp; ${v("S")} = ${R(sS(o.S))}&nbsp; ${v("S")}<sub>y</sub> = ${R(fs(o.Sy))}&nbsp; α = ${fs(o.alpha)} 1/zi (${v("D")} = ${fs(o.D)} m)`)}
+          ${cl("Calitatea ajustării", `eroarea medie pătratică = ${fs(o.rmse * 100, 2)} cm, pe ${o.n} citiri`)}
+          ${cl("Porțiunea finală", o.late <= 0.1 ? `atinsă până la ${fs(o.tEnd)} min <span class="ok">— T și Sy determinate</span>` : `neatinsă până la ${fs(o.tEnd)} min <span class="warn">— T și Sy nesigure, testul trebuia prelungit</span>`)}
+          ${b > 0 ? cl("Permeabilitatea", `${v("K")} = ${fr(fs(o.T), fs(b, 4))} = ${R(fs(o.K) + " m/zi")} = ${sci(o.K / 86400)} m/s`) : ""}
+        </div>`));
+      });
+    }
+
     // comparația între piezometre
     const d = res.dist;
     if (d) {
-      const du = I.unconf && d.dupuitK, tr = d.regime === "trans";
-      B.push(el(h2(++no, tr ? "Metoda distanță–denivelare (Cooper-Jacob)" : (du ? "Metoda Dupuit-Thiem (regim stabilizat)" : "Metoda Thiem (regim stabilizat)")) + (tr ? `
+      const du = I.unconf && d.dupuitK, tr = d.regime === "trans", dg = !tr && d.deGlee;
+      B.push(el(h2(++no, tr ? "Metoda distanță–denivelare (Cooper-Jacob)" : dg ? "Metoda de Glee (acvifer drenant, regim stabilizat)" : (du ? "Metoda Dupuit-Thiem (regim stabilizat)" : "Metoda Thiem (regim stabilizat)")) + (dg ? `
+        <p>În acviferul drenant, regimul stabilizat se atinge pentru că stratul acoperitor aduce apă. Denivelările stabilizate din piezometre urmează soluția de Glee (1930): s = Q/(2πT)·K<sub>0</sub>(r/L). Formula Thiem nu este potrivită aici: ea presupune că apa vine doar lateral, prin strat, nu și de sus, prin stratul acoperitor. Calculul Thiem de mai jos este dat doar pentru comparație. T și L s-au determinat prin ajustare pe denivelările din piezometre.</p>
+        <div class="eqs">${eq(`${v("s")} = ${fr(v("Q"), "2π" + v("T"))} · K<sub>0</sub>(${fr(v("r"), v("L"))})&nbsp;&nbsp;&nbsp;&nbsp; ${v("L")} = √(${v("T")} · ${v("c")})`, "de Glee")}</div>` : tr ? `
         <p>Denivelările citite în același moment în mai multe piezometre se așază pe o dreaptă în funcție de logaritmul distanței până la puț, cât timp u &lt; 0,05 în toate piezometrele (regim nepermanent). Panta pe un ciclu logaritmic al distanței (Δs<sub>r</sub>) dă transmisivitatea, iar distanța r₀ la care dreapta taie s = 0 dă coeficientul de înmagazinare.</p>
         <div class="eqs">${eq(`${v("T")} = ${fr("0,366 · " + v("Q"), "Δ" + v("s") + "<sub>r</sub>")}&nbsp;&nbsp;&nbsp;&nbsp; ${v("S")} = ${fr("2,25 · " + v("T") + " · " + v("t"), v("r") + "₀²")}`, "Cooper-Jacob, distanță–denivelare")}</div>` : `
         <p>În regim stabilizat, denivelările din piezometre nu mai cresc, iar diferența de nivel dintre ele rămâne constantă. Același debit trece prin orice cilindru din jurul puțului, ceea ce conduce la formula Thiem${du ? " (la nivel liber, forma Dupuit-Thiem, cu grosimile saturate h = b − s)" : ""}. Din regimul stabilizat se obține doar transmisivitatea (sau K); coeficientul de înmagazinare S nu se poate determina.</p>
@@ -209,7 +249,8 @@
           ${cl("Transmisivitatea", `${v("T")} = ${fr("0,366 × " + n4(Q), fd(d.dsR, 3))} = ${R(fs(d.T) + " m²/zi")}`)}
           ${tr ? cl("Înmagazinarea", `${v("r")}₀ = ${fs(d.r0)} m;&nbsp; ${v("S")} = ${fr("2,25 × " + fs(d.T) + " × " + fs(tst, 4), fs(d.r0) + "²")} = ${R(sS(d.S))}`) : cl("Înmagazinarea", "nu se poate determina din regimul stabilizat")}
           ${tr ? cl("Verificarea u", `în cel mai îndepărtat piezometru ${v("u")} = ${fs(d.uFar, 2)} ${d.uFar < 0.05 ? `<span class="ok">&lt; 0,05 — condiție îndeplinită</span>` : `<span class="warn">&gt; 0,05 — moment prea timpuriu</span>`}`) : cl("Verificarea regimului", `Δs între piezometre a variat cu ${isFinite(d.dsChange) ? fs(d.dsChange * 100, 2) + " %" : "—"} în ultimul ciclu de timp ${isFinite(d.dsChange) && d.dsChange <= 0.05 ? `<span class="ok">— practic constant</span>` : `<span class="warn">— regimul poate să nu fie stabilizat</span>`}`)}
-          ${du && !tr ? cl("Dupuit-Thiem", `${v("K")} = ${R(fs(d.dupuitK) + " m/zi")} = ${sci(d.dupuitK / 86400)} m/s;&nbsp; ${v("T")} = ${v("K")}·${v("b")} = ${fs(d.dupuitT)} m²/zi`) : (b > 0 ? cl("Permeabilitatea", `${v("K")} = ${fr(fs(d.T), fs(b, 4))} = ${R(fs(d.K) + " m/zi")} = ${sci(d.K / 86400)} m/s`) : "")}
+          ${dg ? cl("de Glee (ajustare)", `${v("T")} = ${R(fs(d.deGlee.T) + " m²/zi")}&nbsp; ${v("L")} = ${R(fs(d.deGlee.L) + " m")}&nbsp; ${v("c")} = ${v("L")}²/${v("T")} = ${fs(d.deGlee.c)} zile <span class="warn">(pentru comparație, Thiem de mai sus dă ${fs(d.T)} m²/zi)</span>`) : ""}
+          ${du && !tr ? cl("Dupuit-Thiem", `${v("K")} = ${R(fs(d.dupuitK) + " m/zi")} = ${sci(d.dupuitK / 86400)} m/s;&nbsp; ${v("T")} = ${v("K")}·${v("b")} = ${fs(d.dupuitT)} m²/zi`) : (b > 0 ? (dg ? cl("Permeabilitatea (de Glee)", `${v("K")} = ${fr(fs(d.deGlee.T), fs(b, 4))} = ${R(fs(d.deGlee.K) + " m/zi")} = ${sci(d.deGlee.K / 86400)} m/s`) : cl("Permeabilitatea", `${v("K")} = ${fr(fs(d.T), fs(b, 4))} = ${R(fs(d.K) + " m/zi")} = ${sci(d.K / 86400)} m/s`)) : "")}
         </div>`));
     }
 

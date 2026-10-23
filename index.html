@@ -60,7 +60,7 @@
         </div>
         <div class="row">
           <div class="field"><label for="b">Grosime strat b (m)</label><input id="b" type="text" inputmode="decimal"></div>
-          <div class="field"><label for="aq">Tip acvifer</label><select id="aq"><option value="c">Sub presiune</option><option value="u">Cu nivel liber</option></select></div>
+          <div class="field"><label for="aq">Tip acvifer</label><select id="aq"><option value="c">Sub presiune</option><option value="l">Semi-captiv (drenant)</option><option value="u">Cu nivel liber</option></select></div>
         </div>
         <label class="check" id="corrWrap"><input type="checkbox" id="corr" checked> <span>Corecție Jacob pentru nivel liber: s′ = s − s²/2b</span></label>
         <div class="field"><label for="mode">În tabel trec</label><select id="mode"><option value="h">Adâncimea nivelului față de reper (m)</option><option value="s">Direct denivelarea s (m)</option></select></div>
@@ -431,6 +431,7 @@
 
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
+<script src="js/models.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/report.js"></script>
